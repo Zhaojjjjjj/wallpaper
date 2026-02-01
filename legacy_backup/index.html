@@ -79,32 +79,9 @@
                     <button class="btn btn-select" data-type="year">选择</button>
                 </div>
 
-                <!-- Life Calendar -->
-                <div class="style-card" data-type="life">
-                    <div class="style-number">02</div>
-                    <div class="style-preview">
-                        <div class="preview-life">
-                            <div class="life-grid" id="lifeGridPreview"></div>
-                            <div class="life-stats">
-                                <div class="stat-item">
-                                    <span class="stat-number" id="lifeWeeks">0</span>
-                                    <span class="stat-label">周已过</span>
-                                </div>
-                                <div class="stat-item">
-                                    <span class="stat-number" id="lifeRemaining">0</span>
-                                    <span class="stat-label">周剩余</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <h3 class="style-name">人生日历</h3>
-                    <p class="style-desc">以周为单位可视化你的人生旅程</p>
-                    <button class="btn btn-select" data-type="life">选择</button>
-                </div>
-
                 <!-- Goal Countdown -->
                 <div class="style-card" data-type="goal">
-                    <div class="style-number">03</div>
+                    <div class="style-number">02</div>
                     <div class="style-preview">
                         <div class="preview-goal">
                             <div class="goal-circle" id="goalCircle">
@@ -124,7 +101,7 @@
 
                 <!-- Month Progress -->
                 <div class="style-card" data-type="month">
-                    <div class="style-number">04</div>
+                    <div class="style-number">03</div>
                     <div class="style-preview">
                         <div class="preview-month">
                             <div class="month-bar" id="monthBarPreview">
@@ -143,7 +120,7 @@
 
                 <!-- Week Progress -->
                 <div class="style-card" data-type="week">
-                    <div class="style-number">05</div>
+                    <div class="style-number">04</div>
                     <div class="style-preview">
                         <div class="preview-week">
                             <div class="week-dots" id="weekDotsPreview">
@@ -163,24 +140,6 @@
                     <button class="btn btn-select" data-type="week">选择</button>
                 </div>
 
-                <!-- Day Progress -->
-                <div class="style-card" data-type="day">
-                    <div class="style-number">06</div>
-                    <div class="style-preview">
-                        <div class="preview-day">
-                            <div class="day-clock" id="dayClockPreview">
-                                <div class="clock-face">
-                                    <div class="clock-hand hour" id="hourHand"></div>
-                                    <div class="clock-hand minute" id="minuteHand"></div>
-                                </div>
-                            </div>
-                            <div class="day-percent" id="dayPercent">0%</div>
-                        </div>
-                    </div>
-                    <h3 class="style-name">今日进度</h3>
-                    <p class="style-desc">模拟时钟展示今天已过时间</p>
-                    <button class="btn btn-select" data-type="day">选择</button>
-                </div>
             </div>
 
             <!-- Visual Styles -->
@@ -409,16 +368,6 @@
                             </select>
                         </div>
 
-                        <div class="form-row" id="birthDateRow">
-                            <label class="form-label">出生日期</label>
-                            <input type="date" class="form-input" id="birthDate">
-                        </div>
-
-                        <div class="form-row" id="lifespanRow">
-                            <label class="form-label">预期寿命 (年)</label>
-                            <input type="number" class="form-input" id="lifespan" value="80" min="1" max="120">
-                        </div>
-
                         <div class="form-row" id="goalNameRow" style="display: none;">
                             <label class="form-label">目标名称</label>
                             <input type="text" class="form-input" id="goalName" placeholder="例如：毕业、婚礼、项目发布">
@@ -426,13 +375,39 @@
 
                         <div class="form-row" id="targetDateRow" style="display: none;">
                             <label class="form-label">目标日期</label>
-                            <input type="date" class="form-input" id="targetDate">
+                            <input type="date" class="form-input date-picker" id="targetDate" readonly placeholder="点击选择日期">
                         </div>
                     </div>
 
                     <div class="config-group">
-                        <h3 class="config-title">颜色配置</h3>
-                        <div class="color-config">
+                        <h3 class="config-title">主题配置</h3>
+                        <div class="theme-presets">
+                            <button class="theme-preset active" data-bg="#000000" data-accent="#ffffff" title="经典黑">
+                                <span class="preset-preview" style="background: #000000; border-color: #ffffff;"></span>
+                                <span class="preset-name">经典黑</span>
+                            </button>
+                            <button class="theme-preset" data-bg="#0a0a1a" data-accent="#4fc3f7" title="暗夜蓝">
+                                <span class="preset-preview" style="background: #0a0a1a; border-color: #4fc3f7;"></span>
+                                <span class="preset-name">暗夜蓝</span>
+                            </button>
+                            <button class="theme-preset" data-bg="#0d1f0d" data-accent="#81c784" title="森林绿">
+                                <span class="preset-preview" style="background: #0d1f0d; border-color: #81c784;"></span>
+                                <span class="preset-name">森林绿</span>
+                            </button>
+                            <button class="theme-preset" data-bg="#1a0f0a" data-accent="#ff8a65" title="暖橙色">
+                                <span class="preset-preview" style="background: #1a0f0a; border-color: #ff8a65;"></span>
+                                <span class="preset-name">暖橙色</span>
+                            </button>
+                            <button class="theme-preset" data-bg="#ffffff" data-accent="#9c27b0" title="白底紫">
+                                <span class="preset-preview" style="background: #ffffff; border-color: #9c27b0;"></span>
+                                <span class="preset-name">白底紫</span>
+                            </button>
+                            <button class="theme-preset" data-bg="custom" data-accent="custom" title="自定义">
+                                <span class="preset-preview custom">+</span>
+                                <span class="preset-name">自定义</span>
+                            </button>
+                        </div>
+                        <div class="color-config" id="customColors" style="display: none; margin-top: 16px;">
                             <div class="color-item">
                                 <label class="form-label">背景色</label>
                                 <div class="color-picker-wrapper">

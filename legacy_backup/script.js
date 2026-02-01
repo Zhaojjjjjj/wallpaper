@@ -10,15 +10,14 @@ const state = {
     currentType: 'year',
     config: {
         location: 'Asia/Shanghai',
-        birthDate: '',
-        lifespan: 80,
         goalName: '',
         targetDate: '',
         bgColor: '#000000',
         accentColor: '#FFFFFF'
     },
     deviceResolution: { width: 1179, height: 2556 },
-    autoDetectDevice: true
+    autoDetectDevice: true,
+    customTheme: false
 };
 
 // ========================================
@@ -31,18 +30,16 @@ const elements = {
 
     // Form elements
     locationSelect: document.getElementById('locationSelect'),
-    birthDate: document.getElementById('birthDate'),
-    lifespan: document.getElementById('lifespan'),
     goalName: document.getElementById('goalName'),
     targetDate: document.getElementById('targetDate'),
     bgColor: document.getElementById('bgColor'),
     accentColor: document.getElementById('accentColor'),
     bgColorValue: document.getElementById('bgColorValue'),
     accentColorValue: document.getElementById('accentColorValue'),
+    customColors: document.getElementById('customColors'),
+    themePresets: document.querySelectorAll('.theme-preset'),
 
     // Form rows (conditional)
-    birthDateRow: document.getElementById('birthDateRow'),
-    lifespanRow: document.getElementById('lifespanRow'),
     goalNameRow: document.getElementById('goalNameRow'),
     targetDateRow: document.getElementById('targetDateRow'),
 
@@ -75,9 +72,6 @@ const elements = {
     // Preview grids
     yearGridPreview: document.getElementById('yearGridPreview'),
     yearPercent: document.getElementById('yearPercent'),
-    lifeGridPreview: document.getElementById('lifeGridPreview'),
-    lifeWeeks: document.getElementById('lifeWeeks'),
-    lifeRemaining: document.getElementById('lifeRemaining'),
     goalCircle: document.getElementById('goalCircle'),
     goalProgressCircle: document.getElementById('goalProgressCircle'),
     goalDays: document.getElementById('goalDays'),
@@ -95,16 +89,10 @@ const elements = {
 // Initialization
 // ========================================
 function init() {
-    // Set default dates
+    // Set default target date (7 days from now)
     const today = new Date();
-    const defaultBirthDate = new Date(today.getFullYear() - 25, 0, 1);
-    elements.birthDate.value = formatDate(defaultBirthDate);
-
-    const defaultTargetDate = new Date(today.getFullYear(), today.getMonth() + 3, today.getDate());
+    const defaultTargetDate = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 7);
     elements.targetDate.value = formatDate(defaultTargetDate);
-
-    // Update state
-    state.config.birthDate = elements.birthDate.value;
     state.config.targetDate = elements.targetDate.value;
 
     // Detect device resolution
@@ -112,7 +100,6 @@ function init() {
 
     // Initialize preview grids
     initYearGrid();
-    initLifeGrid();
 
     // Initial render
     updateUI();
@@ -159,13 +146,6 @@ function bindEvents() {
         renderPreview();
     });
 
-    elements.lifespan.addEventListener('input', (e) => {
-        state.config.lifespan = parseInt(e.target.value) || 80;
-        updateLifePreview();
-        generateURL();
-        renderPreview();
-    });
-
     elements.goalName.addEventListener('input', (e) => {
         state.config.goalName = e.target.value;
         updateGoalPreview();
@@ -178,6 +158,36 @@ function bindEvents() {
         updateGoalPreview();
         generateURL();
         renderPreview();
+    });
+
+    // Theme preset selection
+    elements.themePresets.forEach(preset => {
+        preset.addEventListener('click', () => {
+            const bg = preset.dataset.bg;
+            const accent = preset.dataset.accent;
+
+            // Update active state
+            elements.themePresets.forEach(p => p.classList.remove('active'));
+            preset.classList.add('active');
+
+            if (bg === 'custom') {
+                // Show custom color pickers
+                state.customTheme = true;
+                elements.customColors.style.display = 'flex';
+            } else {
+                // Apply preset
+                state.customTheme = false;
+                state.config.bgColor = bg;
+                state.config.accentColor = accent;
+                elements.customColors.style.display = 'none';
+                elements.bgColor.value = bg;
+                elements.accentColor.value = accent;
+                elements.bgColorValue.textContent = bg.toUpperCase();
+                elements.accentColorValue.textContent = accent.toUpperCase();
+                generateURL();
+                renderPreview();
+            }
+        });
     });
 
     elements.bgColor.addEventListener('input', (e) => {
@@ -283,11 +293,8 @@ function selectStyle(type) {
 }
 
 function updateFormVisibility() {
-    const isLife = state.currentType === 'life';
     const isGoal = state.currentType === 'goal';
 
-    elements.birthDateRow.style.display = isLife ? 'block' : 'none';
-    elements.lifespanRow.style.display = isLife ? 'block' : 'none';
     elements.goalNameRow.style.display = isGoal ? 'block' : 'none';
     elements.targetDateRow.style.display = isGoal ? 'block' : 'none';
 }
@@ -309,20 +316,6 @@ function initYearGrid() {
     updateYearPreview();
 }
 
-function initLifeGrid() {
-    const grid = elements.lifeGridPreview;
-    grid.innerHTML = '';
-
-    // Create 160 cells (8 rows x 20 columns for a sample)
-    for (let i = 0; i < 160; i++) {
-        const cell = document.createElement('div');
-        cell.className = 'life-cell';
-        grid.appendChild(cell);
-    }
-
-    updateLifePreview();
-}
-
 // ========================================
 // Preview Updates
 // ========================================
@@ -342,33 +335,6 @@ function updateYearPreview() {
     });
 
     elements.yearPercent.textContent = Math.floor(percent) + '%';
-}
-
-function updateLifePreview() {
-    if (!state.config.birthDate) return;
-
-    const birthDate = new Date(state.config.birthDate);
-    const now = new Date();
-    const lifespanWeeks = state.config.lifespan * 52;
-
-    const weeksLived = Math.floor((now - birthDate) / (1000 * 60 * 60 * 24 * 7));
-    const weeksRemaining = Math.max(0, lifespanWeeks - weeksLived);
-
-    elements.lifeWeeks.textContent = weeksLived.toLocaleString();
-    elements.lifeRemaining.textContent = weeksRemaining.toLocaleString();
-
-    const cells = elements.lifeGridPreview.querySelectorAll('.life-cell');
-    const totalCells = cells.length;
-    const filledCount = Math.min(totalCells, Math.floor((weeksLived / lifespanWeeks) * totalCells));
-
-    cells.forEach((cell, index) => {
-        cell.classList.remove('filled', 'current');
-        if (index < filledCount) {
-            cell.classList.add('filled');
-        } else if (index === filledCount) {
-            cell.classList.add('current');
-        }
-    });
 }
 
 function updateGoalPreview() {
@@ -404,9 +370,6 @@ function renderPreview() {
     switch (state.currentType) {
         case 'year':
             renderYearPreview(screen);
-            break;
-        case 'life':
-            renderLifePreview(screen);
             break;
         case 'goal':
             renderGoalPreview(screen);
@@ -453,39 +416,7 @@ function renderYearPreview(container) {
     container.appendChild(wrapper);
 }
 
-function renderLifePreview(container) {
-    if (!state.config.birthDate) return;
-
-    const birthDate = new Date(state.config.birthDate);
-    const now = new Date();
-    const lifespanWeeks = state.config.lifespan * 52;
-
-    const weeksLived = Math.floor((now - birthDate) / (1000 * 60 * 60 * 24 * 7));
-    const weeksRemaining = Math.max(0, lifespanWeeks - weeksLived);
-
-    const wrapper = document.createElement('div');
-    wrapper.className = 'preview-life-full';
-    wrapper.style.color = state.config.accentColor;
-
-    const grid = document.createElement('div');
-    grid.className = 'life-grid-full';
-
-    // 40 rows x 26 columns = 1040 cells (20 years worth of weeks as sample)
-    const displayWeeks = Math.min(520, lifespanWeeks); // Show ~10 years at a time
-    const cols = 26;
-    const rows = Math.ceil(displayWeeks / cols);
-
-    for (let i = 0; i < displayWeeks; i++) {
-        const cell = document.createElement('div');
-        cell.className = 'life-cell';
-        cell.style.backgroundColor = state.config.accentColor;
-
-        if (i < weeksLived) {
-            cell.style.opacity = '1';
-        } else if (i === weeksLived) {
-            cell.style.opacity = '1';
-            cell.style.boxShadow = `0 0 4px ${state.config.accentColor}`;
-        } else {
+function renderGoalPreview(container) {
             cell.style.opacity = '0.2';
         }
 
@@ -564,10 +495,7 @@ function generateURL() {
         accent: state.config.accentColor
     });
 
-    if (state.currentType === 'life') {
-        params.set('birth', state.config.birthDate);
-        params.set('lifespan', state.config.lifespan);
-    } else if (state.currentType === 'goal') {
+    if (state.currentType === 'goal') {
         params.set('target', state.config.targetDate);
         if (state.config.goalName) {
             params.set('name', state.config.goalName);
@@ -627,9 +555,6 @@ function downloadWallpaper() {
         case 'year':
             drawYearWallpaper(ctx, canvas.width, canvas.height);
             break;
-        case 'life':
-            drawLifeWallpaper(ctx, canvas.width, canvas.height);
-            break;
         case 'goal':
             drawGoalWallpaper(ctx, canvas.width, canvas.height);
             break;
@@ -650,15 +575,15 @@ function drawYearWallpaper(ctx, width, height) {
     const daysPassed = (now - startOfYear) / (1000 * 60 * 60 * 24);
     const percent = Math.min(100, Math.max(0, (daysPassed / totalDays) * 100));
 
-    // Grid settings
+    // Grid settings - improved spacing
     const cols = 13;
     const rows = 10;
-    const cellSize = Math.min(width, height) / 25;
-    const gap = cellSize * 0.3;
+    const cellSize = Math.min(width, height) / 28;
+    const gap = cellSize * 0.25;
     const gridWidth = cols * cellSize + (cols - 1) * gap;
     const gridHeight = rows * cellSize + (rows - 1) * gap;
     const startX = (width - gridWidth) / 2;
-    const startY = (height - gridHeight) / 2 - 100;
+    const startY = (height - gridHeight) / 2 - height * 0.05;
 
     const totalCells = cols * rows;
     const filledCount = Math.floor((percent / 100) * totalCells);
@@ -679,51 +604,21 @@ function drawYearWallpaper(ctx, width, height) {
 
     ctx.globalAlpha = 1;
 
-    // Draw percentage
+    // Draw percentage - better spacing
+    const textY = startY + gridHeight + height * 0.12;
     ctx.fillStyle = state.config.accentColor;
-    ctx.font = `bold ${Math.min(width, height) / 8}px Inter, sans-serif`;
+    ctx.font = `bold ${Math.min(width, height) / 10}px Inter, sans-serif`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(`${Math.floor(percent)}%`, width / 2, startY + gridHeight + 150);
+    ctx.fillText(`${Math.floor(percent)}%`, width / 2, textY);
 
     // Draw year
-    ctx.font = `500 ${Math.min(width, height) / 25}px Inter, sans-serif`;
+    ctx.font = `500 ${Math.min(width, height) / 22}px Inter, sans-serif`;
     ctx.globalAlpha = 0.6;
-    ctx.fillText(String(now.getFullYear()), width / 2, startY + gridHeight + 220);
+    ctx.fillText(String(now.getFullYear()), width / 2, textY + height * 0.08);
 }
 
-function drawLifeWallpaper(ctx, width, height) {
-    if (!state.config.birthDate) return;
-
-    const birthDate = new Date(state.config.birthDate);
-    const now = new Date();
-    const lifespanWeeks = state.config.lifespan * 52;
-    const weeksLived = Math.floor((now - birthDate) / (1000 * 60 * 60 * 24 * 7));
-
-    // Grid settings - show all weeks
-    const cols = 52;
-    const rows = Math.ceil(lifespanWeeks / cols);
-    const cellSize = Math.min(width / (cols + 4), height / (rows + 8));
-    const gap = cellSize * 0.15;
-    const gridWidth = cols * cellSize + (cols - 1) * gap;
-    const gridHeight = rows * cellSize + (rows - 1) * gap;
-    const startX = (width - gridWidth) / 2;
-    const startY = (height - gridHeight) / 2;
-
-    // Draw cells
-    for (let i = 0; i < lifespanWeeks; i++) {
-        const row = Math.floor(i / cols);
-        const col = i % cols;
-        const x = startX + col * (cellSize + gap);
-        const y = startY + row * (cellSize + gap);
-
-        ctx.fillStyle = state.config.accentColor;
-
-        if (i < weeksLived) {
-            ctx.globalAlpha = 1;
-        } else if (i === weeksLived) {
-            ctx.globalAlpha = 1;
-            ctx.shadowColor = state.config.accentColor;
+function drawGoalWallpaper(ctx, width, height) {
             ctx.shadowBlur = cellSize;
         } else {
             ctx.globalAlpha = 0.2;
@@ -748,16 +643,30 @@ function drawLifeWallpaper(ctx, width, height) {
 }
 
 function drawGoalWallpaper(ctx, width, height) {
-    if (!state.config.targetDate) return;
+    // Use default target date if not set
+    const targetDateStr = state.config.targetDate || getDefaultTargetDate();
+    const targetDate = new Date(targetDateStr);
 
-    const targetDate = new Date(state.config.targetDate);
+    // Validate target date
+    if (isNaN(targetDate.getTime())) {
+        ctx.fillStyle = state.config.bgColor;
+        ctx.fillRect(0, 0, width, height);
+        ctx.fillStyle = state.config.accentColor;
+        ctx.font = `bold ${Math.min(width, height) / 15}px sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('无效的目标日期', width / 2, height / 2);
+        return;
+    }
+
     const now = new Date();
     const daysRemaining = Math.ceil((targetDate - now) / (1000 * 60 * 60 * 24));
 
+    // Improved layout - centered with better spacing
     const centerX = width / 2;
-    const centerY = height / 2 - 50;
-    const radius = Math.min(width, height) / 5;
-    const strokeWidth = radius * 0.15;
+    const centerY = height / 2;
+    const radius = Math.min(width, height) / 6;
+    const strokeWidth = radius * 0.08;
 
     // Draw background circle
     ctx.beginPath();
@@ -767,7 +676,7 @@ function drawGoalWallpaper(ctx, width, height) {
     ctx.lineWidth = strokeWidth;
     ctx.stroke();
 
-    // Draw progress arc (simplified - just a partial arc)
+    // Draw progress arc
     const percent = Math.min(100, Math.max(0, 100 - (daysRemaining / 100) * 100));
     const endAngle = -Math.PI / 2 + (percent / 100) * Math.PI * 2;
 
@@ -778,22 +687,22 @@ function drawGoalWallpaper(ctx, width, height) {
     ctx.lineCap = 'round';
     ctx.stroke();
 
-    // Draw days
+    // Draw days - larger and centered
     ctx.fillStyle = state.config.accentColor;
-    ctx.font = `bold ${radius}px Inter, sans-serif`;
+    ctx.font = `bold ${radius * 0.9}px Inter, sans-serif`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(String(Math.max(0, daysRemaining)), centerX, centerY);
+    ctx.fillText(String(Math.max(0, daysRemaining)), centerX, centerY - radius * 0.1);
 
-    // Draw label
-    ctx.font = `500 ${radius * 0.25}px Inter, sans-serif`;
-    ctx.globalAlpha = 0.6;
-    ctx.fillText('剩余天数', centerX, centerY + radius + 40);
+    // Draw label - below the number with proper spacing
+    ctx.font = `500 ${radius * 0.18}px Inter, sans-serif`;
+    ctx.globalAlpha = 0.7;
+    ctx.fillText('剩余天数', centerX, centerY + radius * 0.5);
 
-    // Draw goal name
-    ctx.font = `600 ${radius * 0.3}px Inter, sans-serif`;
+    // Draw goal name - at the bottom with more spacing
+    ctx.font = `600 ${Math.min(width * 0.06, 60)}px Inter, sans-serif`;
     ctx.globalAlpha = 1;
-    ctx.fillText(state.config.goalName || '目标', centerX, centerY + radius + 90);
+    ctx.fillText(state.config.goalName || '我的目标', centerX, height * 0.78);
 }
 
 // Helper function for rounded rectangles
@@ -1038,7 +947,6 @@ function updateDeviceResolutionFromCustom() {
 
 function updateUI() {
     updateYearPreview();
-    updateLifePreview();
     updateGoalPreview();
 }
 

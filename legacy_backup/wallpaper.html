@@ -39,13 +39,18 @@
                 type: params.get('type') || 'year',
                 bg: params.get('bg') || '#000000',
                 accent: params.get('accent') || '#FFFFFF',
-                birth: params.get('birth'),
-                lifespan: parseInt(params.get('lifespan')) || 80,
-                target: params.get('target'),
-                name: params.get('name') || '目标',
+                target: params.get('target') || getDefaultTargetDate(),
+                name: params.get('name') || '我的目标',
                 width: parseInt(params.get('w')) || window.innerWidth,
                 height: parseInt(params.get('h')) || window.innerHeight
             };
+        }
+
+        // Get default target date (7 days from now)
+        function getDefaultTargetDate() {
+            const date = new Date();
+            date.setDate(date.getDate() + 7);
+            return date.toISOString().split('T')[0];
         }
 
         // Helper: Draw rounded rectangle
@@ -76,11 +81,11 @@
             ctx.fillStyle = config.bg;
             ctx.fillRect(0, 0, width, height);
 
-            // Grid settings
+            // Grid settings - improved spacing
             const cols = 13;
             const rows = 10;
-            const cellSize = Math.min(width, height) / 25;
-            const gap = cellSize * 0.3;
+            const cellSize = Math.min(width, height) / 28;
+            const gap = cellSize * 0.25;
             const gridWidth = cols * cellSize + (cols - 1) * gap;
             const gridHeight = rows * cellSize + (rows - 1) * gap;
             const startX = (width - gridWidth) / 2;
@@ -105,17 +110,18 @@
 
             ctx.globalAlpha = 1;
 
-            // Draw percentage
+            // Draw percentage - better spacing
+            const textY = startY + gridHeight + height * 0.12;
             ctx.fillStyle = config.accent;
-            ctx.font = `bold ${Math.min(width, height) / 8}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
+            ctx.font = `bold ${Math.min(width, height) / 10}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
-            ctx.fillText(`${Math.floor(percent)}%`, width / 2, startY + gridHeight + height * 0.08);
+            ctx.fillText(`${Math.floor(percent)}%`, width / 2, textY);
 
             // Draw year
-            ctx.font = `500 ${Math.min(width, height) / 25}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
+            ctx.font = `500 ${Math.min(width, height) / 22}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
             ctx.globalAlpha = 0.6;
-            ctx.fillText(String(now.getFullYear()), width / 2, startY + gridHeight + height * 0.12);
+            ctx.fillText(String(now.getFullYear()), width / 2, textY + height * 0.08);
         }
 
         // Life Calendar Wallpaper
@@ -193,19 +199,22 @@
 
         // Goal Countdown Wallpaper
         function drawGoal(ctx, width, height, config) {
-            if (!config.target) {
-                // Fallback if no target date
+            // Use default target date if not set
+            const targetDateStr = config.target || getDefaultTargetDate();
+            const targetDate = new Date(targetDateStr);
+
+            // Validate target date
+            if (isNaN(targetDate.getTime())) {
                 ctx.fillStyle = config.bg;
                 ctx.fillRect(0, 0, width, height);
                 ctx.fillStyle = config.accent;
                 ctx.font = `bold ${Math.min(width, height) / 15}px sans-serif`;
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
-                ctx.fillText('请设置目标日期', width / 2, height / 2);
+                ctx.fillText('无效的目标日期', width / 2, height / 2);
                 return;
             }
 
-            const targetDate = new Date(config.target);
             const now = new Date();
             const daysRemaining = Math.ceil((targetDate - now) / (1000 * 60 * 60 * 24));
             const totalDays = 100; // Reference for progress circle
@@ -215,10 +224,11 @@
             ctx.fillStyle = config.bg;
             ctx.fillRect(0, 0, width, height);
 
+            // Improved layout - centered with better spacing
             const centerX = width / 2;
-            const centerY = height / 2 - height * 0.03;
-            const radius = Math.min(width, height) / 5;
-            const strokeWidth = radius * 0.12;
+            const centerY = height / 2;
+            const radius = Math.min(width, height) / 6;
+            const strokeWidth = radius * 0.08;
 
             // Draw background circle
             ctx.beginPath();
@@ -238,22 +248,22 @@
             ctx.lineCap = 'round';
             ctx.stroke();
 
-            // Draw days
+            // Draw days - larger and centered
             ctx.fillStyle = config.accent;
-            ctx.font = `bold ${radius * 0.8}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
+            ctx.font = `bold ${radius * 0.9}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
-            ctx.fillText(String(Math.max(0, daysRemaining)), centerX, centerY);
+            ctx.fillText(String(Math.max(0, daysRemaining)), centerX, centerY - radius * 0.1);
 
-            // Draw label
-            ctx.font = `500 ${radius * 0.2}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
-            ctx.globalAlpha = 0.6;
-            ctx.fillText('剩余天数', centerX, centerY + radius + radius * 0.3);
+            // Draw label - below the number with proper spacing
+            ctx.font = `500 ${radius * 0.18}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
+            ctx.globalAlpha = 0.7;
+            ctx.fillText('剩余天数', centerX, centerY + radius * 0.5);
 
-            // Draw goal name
-            ctx.font = `600 ${radius * 0.22}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
+            // Draw goal name - at the bottom with more spacing
+            ctx.font = `600 ${Math.min(width * 0.06, 60)}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
             ctx.globalAlpha = 1;
-            ctx.fillText(config.name, centerX, centerY + radius + radius * 0.6);
+            ctx.fillText(config.name, centerX, height * 0.78);
         }
 
         // Main render function
@@ -270,9 +280,6 @@
             switch (config.type) {
                 case 'year':
                     drawYear(ctx, config.width, config.height, config);
-                    break;
-                case 'life':
-                    drawLife(ctx, config.width, config.height, config);
                     break;
                 case 'goal':
                     drawGoal(ctx, config.width, config.height, config);
