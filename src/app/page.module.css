@@ -25,10 +25,10 @@
 
 .stickyWrapper {
 	position: sticky;
-	top: 2rem;
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing-lg);
+	top: 10rem;
 }
 
 .controlsCol {

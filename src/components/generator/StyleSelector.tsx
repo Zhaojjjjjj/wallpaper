@@ -9,13 +9,11 @@ interface StyleSelectorProps {
 }
 
 const STYLES: { id: WallpaperType; name: string; desc: string }[] = [
-	{ id: "year", name: "Year Progress", desc: "Visualize the year as a grid" },
-	{ id: "life", name: "Life Calendar", desc: "Your life in weeks" },
-	{ id: "goal", name: "Goal Countdown", desc: "Track important deadlines" },
-	{ id: "month", name: "Month Progress", desc: "Focus on the current month" },
-	{ id: "week", name: "Weekly", desc: "Seven days at a glance" },
-	{ id: "day", name: "Daily", desc: "Today's journey" },
-	{ id: "minimal", name: "Minimal", desc: "Pure data, no distractions" },
+	{ id: "year", name: "年度进度", desc: "以网格形式可视化整年" },
+	{ id: "goal", name: "目标倒计时", desc: "追踪重要截止日期" },
+	{ id: "month", name: "月度进度", desc: "关注当前月份" },
+	{ id: "week", name: "本周", desc: "一周七天一览" },
+	{ id: "minimal", name: "极简", desc: "纯粹数据，无干扰" },
 ];
 
 export const StyleSelector: React.FC<StyleSelectorProps> = ({ selected, onSelect }) => {

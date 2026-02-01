@@ -24,9 +24,6 @@ export class WallpaperEngine {
 				case "year":
 					this.drawYear();
 					break;
-				case "life":
-					this.drawLife();
-					break;
 				case "goal":
 					this.drawGoal();
 					break;
@@ -36,14 +33,11 @@ export class WallpaperEngine {
 				case "week":
 					this.drawWeek();
 					break;
-				case "day":
-					this.drawDay();
-					break;
 				case "minimal":
 					this.drawMinimal();
 					break;
 				default:
-					this.drawText("Unknown wallpaper type", this.width / 2, this.height / 2, 40);
+					this.drawText("未知的壁纸类型", this.width / 2, this.height / 2, 40);
 			}
 		} catch (error) {
 			// Handle any rendering errors gracefully
@@ -69,13 +63,13 @@ export class WallpaperEngine {
 		const lCols = 13;
 		const lRows = 10;
 
-		const cellSize = Math.min(this.width, this.height) / 25;
-		const gap = cellSize * 0.3;
+		const cellSize = Math.min(this.width, this.height) / 28;
+		const gap = cellSize * 0.25;
 		const gridWidth = lCols * cellSize + (lCols - 1) * gap;
 		const gridHeight = lRows * cellSize + (lRows - 1) * gap;
 
 		const startX = (this.width - gridWidth) / 2;
-		const startY = (this.height - gridHeight) / 2 - 100;
+		const startY = (this.height - gridHeight) / 2 - this.height * 0.05;
 
 		const filledCount = Math.floor((percent / 100) * (lCols * lRows));
 
@@ -94,9 +88,10 @@ export class WallpaperEngine {
 
 		this.ctx.globalAlpha = 1;
 
-		// Text
-		this.drawText(`${Math.floor(percent)}%`, this.width / 2, startY + gridHeight + 150, Math.min(this.width, this.height) / 8, "bold");
-		this.drawText(String(now.getFullYear()), this.width / 2, startY + gridHeight + 250, Math.min(this.width, this.height) / 24, "500", 0.6);
+		// Text - better spacing
+		const textY = startY + gridHeight + this.height * 0.12;
+		this.drawText(`${Math.floor(percent)}%`, this.width / 2, textY, Math.min(this.width, this.height) / 10, "bold");
+		this.drawText(String(now.getFullYear()), this.width / 2, textY + this.height * 0.08, Math.min(this.width, this.height) / 22, "500", 0.6);
 	}
 
 	private drawLife() {
@@ -158,12 +153,10 @@ export class WallpaperEngine {
 	}
 
 	private drawGoal() {
-		if (!this.config.targetDate) {
-			this.drawText("Set Target Date", this.width / 2, this.height / 2, 40);
-			return;
-		}
+		// Use default target date (7 days from now) if not set
+		const targetDateStr = this.config.targetDate || this.getDefaultTargetDate();
+		const target = new Date(targetDateStr);
 
-		const target = new Date(this.config.targetDate);
 		// Validate target date
 		if (isNaN(target.getTime())) {
 			this.drawText("Invalid target date", this.width / 2, this.height / 2, 40);
@@ -174,20 +167,18 @@ export class WallpaperEngine {
 		const daysLeft = Math.ceil((target.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
 
 		const centerX = this.width / 2;
-		const centerY = this.height / 2 - 50;
-		const radius = Math.min(this.width, this.height) / 5;
+		const centerY = this.height / 2;
+		const radius = Math.min(this.width, this.height) / 6;
 
 		// Ring
 		this.ctx.beginPath();
 		this.ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
 		this.ctx.strokeStyle = this.config.theme.accent;
 		this.ctx.globalAlpha = 0.2;
-		this.ctx.lineWidth = radius * 0.1;
+		this.ctx.lineWidth = radius * 0.08;
 		this.ctx.stroke();
 
-		// Progress (Assuming 100 days default window if created recently, or use static max)
-		// Visualizing "Days Left" as a full circle? No, maybe just a static ring for aesthetic.
-		// Let's make it a countdown ring (100 days max visual).
+		// Progress ring
 		const MAX_DAYS = 100;
 		const progress = Math.min(1, Math.max(0, (MAX_DAYS - daysLeft) / MAX_DAYS));
 
@@ -198,9 +189,21 @@ export class WallpaperEngine {
 		this.ctx.globalAlpha = 1;
 		this.ctx.stroke();
 
-		this.drawText(Math.max(0, daysLeft).toString(), centerX, centerY, radius * 0.8, "bold");
-		this.drawText("DAYS LEFT", centerX, centerY + radius * 0.35, radius * 0.15, "600", 0.6);
-		this.drawText(this.config.goalName || "My Goal", centerX, centerY + radius + 80, radius * 0.2, "600");
+		// Days number - larger and centered
+		this.drawText(Math.max(0, daysLeft).toString(), centerX, centerY - radius * 0.1, radius * 0.9, "bold");
+
+		// Days left label - below the number with proper spacing
+		this.drawText("剩余天数", centerX, centerY + radius * 0.5, radius * 0.18, "500", 0.7);
+
+		// Goal name - at the bottom with more spacing
+		const goalName = this.config.goalName || "我的目标";
+		this.drawText(goalName, centerX, this.height * 0.68, Math.min(this.width * 0.06, 60), "600");
+	}
+
+	private getDefaultTargetDate(): string {
+		const date = new Date();
+		date.setDate(date.getDate() + 7); // Default to 7 days from now
+		return date.toISOString().split("T")[0];
 	}
 
 	private drawMonth() {
@@ -212,8 +215,8 @@ export class WallpaperEngine {
 		const percent = current / total;
 
 		// Draw a sleek bar
-		const barWidth = this.width * 0.7;
-		const barHeight = 40;
+		const barWidth = this.width * 0.75;
+		const barHeight = Math.min(this.height * 0.025, 50);
 		const x = (this.width - barWidth) / 2;
 		const y = this.height / 2;
 
@@ -226,9 +229,10 @@ export class WallpaperEngine {
 		this.roundRect(x, y, barWidth * percent, barHeight, barHeight / 2);
 		this.ctx.fill();
 
-		this.drawText(`${Math.floor(percent * 100)}%`, this.width / 2, y - 60, 80, "bold");
-		const monthName = now.toLocaleString("default", { month: "long" }).toUpperCase();
-		this.drawText(monthName, this.width / 2, y + 100, 40, "500", 0.7);
+		// Better spacing for text
+		this.drawText(`${Math.floor(percent * 100)}%`, this.width / 2, y - this.height * 0.08, Math.min(this.width * 0.12, 100), "bold");
+		const monthName = now.toLocaleString("zh-CN", { month: "long" });
+		this.drawText(monthName, this.width / 2, y + this.height * 0.1, Math.min(this.width * 0.06, 50), "500", 0.7);
 	}
 
 	private drawWeek() {
@@ -236,8 +240,8 @@ export class WallpaperEngine {
 		const now = new Date();
 		const day = now.getDay() || 7; // 1-7
 
-		const dotSize = this.width / 15;
-		const gap = dotSize * 0.5;
+		const dotSize = Math.min(this.width / 12, this.height / 20);
+		const gap = dotSize * 0.6;
 		const totalW = 7 * dotSize + 6 * gap;
 		let startX = (this.width - totalW) / 2;
 		const centerY = this.height / 2;
@@ -246,21 +250,22 @@ export class WallpaperEngine {
 			this.ctx.fillStyle = this.config.theme.accent;
 			if (i <= day) {
 				this.ctx.globalAlpha = 1;
-				if (i === day) this.ctx.shadowBlur = 20;
+				if (i === day) this.ctx.shadowBlur = dotSize * 0.3;
 			} else {
 				this.ctx.globalAlpha = 0.2;
 				this.ctx.shadowBlur = 0;
 			}
 
 			this.ctx.beginPath();
-			this.ctx.arc(startX + dotSize / 2, centerY, dotSize / 2, 0, Math.PI * 2);
+			this.ctx.arc(startX + dotSize / 2, centerY, dotSize / 2.2, 0, Math.PI * 2);
 			this.ctx.fill();
 			this.ctx.shadowBlur = 0;
 
 			startX += dotSize + gap;
 		}
 
-		this.drawText("THIS WEEK", this.width / 2, centerY + dotSize + 80, 40, "600", 0.8);
+		// Better spacing for label
+		this.drawText("本周", this.width / 2, centerY + dotSize + this.height * 0.06, Math.min(this.width * 0.06, 50), "500", 0.8);
 	}
 
 	private drawDay() {
@@ -303,9 +308,9 @@ export class WallpaperEngine {
 		const cx = this.width / 2;
 		const cy = this.height / 2;
 
-		// Just a big number
-		this.drawText(`${Math.floor(percent)}%`, cx, cy, this.width * 0.35, "800");
-		this.drawText(String(now.getFullYear()), cx, cy + this.width * 0.2, 50, "300", 0.5);
+		// Better proportion for minimal style
+		this.drawText(`${Math.floor(percent)}%`, cx, cy - this.height * 0.02, this.width * 0.3, "800");
+		this.drawText(String(now.getFullYear()), cx, cy + this.height * 0.12, Math.min(this.width * 0.06, 60), "300", 0.5);
 	}
 
 	// --- Helpers ---

@@ -37,18 +37,20 @@ export const UrlGenerator: React.FC<UrlGeneratorProps> = ({ config }) => {
 			setCopied(true);
 			setTimeout(() => setCopied(false), 2000);
 		} catch (err) {
-			console.error("Failed to copy", err);
+			console.error("复制失败", err);
 		}
 	};
 
 	return (
 		<div className={styles.container}>
-			<h3 className={styles.title}>Automation Link</h3>
-			<p className={styles.desc}>Use this URL in Shortcuts (iOS) or MacroDroid (Android) to dynamically generate this wallpaper every day.</p>
+			<h3 className={styles.title}>自动化链接</h3>
+			<p className={styles.desc}>
+				复制此链接，在 iOS 快捷指令或 Android MacroDroid 中设置每日自动访问，壁纸将每天自动更新。
+			</p>
 			<div className={styles.inputGroup}>
 				<Input readOnly value={generateUrl()} className={styles.urlInput} />
-				<Button onClick={handleCopy} variant="secondary" className={styles.copyBtn}>
-					{copied ? "Copied!" : "Copy Link"}
+				<Button onClick={handleCopy} variant="primary" className={styles.copyBtn}>
+					{copied ? "已复制！" : "复制链接"}
 				</Button>
 			</div>
 		</div>
