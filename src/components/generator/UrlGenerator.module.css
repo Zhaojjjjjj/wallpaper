@@ -1,0 +1,38 @@
+.container {
+	background: var(--bg-card);
+	border: 1px solid var(--border);
+	border-radius: var(--radius-lg);
+	padding: var(--spacing-lg);
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing-sm);
+	margin-top: var(--spacing-xl);
+}
+
+.title {
+	font-size: 1.1rem;
+	color: var(--text-main);
+	font-family: "Outfit", sans-serif;
+}
+
+.desc {
+	font-size: 0.9rem;
+	color: var(--text-muted);
+	line-height: 1.5;
+	margin-bottom: var(--spacing-sm);
+}
+
+.inputGroup {
+	display: flex;
+	gap: var(--spacing-sm);
+	align-items: flex-end;
+}
+
+.urlInputWrapper {
+	flex: 1;
+	margin-bottom: 0 !important;
+}
+
+.copyBtn {
+	height: 46px; /* Match input height roughly */
+}

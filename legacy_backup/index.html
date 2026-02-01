@@ -1,0 +1,761 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LifeGrid - 你的时间，可视化</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="container">
+            <div class="logo">LifeGrid</div>
+            <nav class="nav">
+                <a href="#wallpapers" class="nav-link">壁纸</a>
+                <a href="#customize" class="nav-link">定制</a>
+                <a href="#setup" class="nav-link">设置</a>
+            </nav>
+            <div class="header-actions">
+                <button class="theme-toggle" id="themeToggle">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="5"/>
+                        <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
+                    </svg>
+                </button>
+                <a href="https://github.com" class="github-link" target="_blank">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+                    </svg>
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="container">
+            <h1 class="hero-title">YOUR TIME.<br>VISUALIZED.</h1>
+            <p class="hero-subtitle">生成个性化时间壁纸，让每一刻都清晰可见</p>
+            <a href="#customize" class="btn btn-primary">开始定制</a>
+        </div>
+        <div class="hero-grid-decoration">
+            <div class="grid-bg"></div>
+        </div>
+    </section>
+
+    <!-- Choose Your Style -->
+    <section class="styles-section" id="wallpapers">
+        <div class="container">
+            <h2 class="section-title">选择你的风格</h2>
+            <p class="section-subtitle">多种可视化方式，总有一款适合你</p>
+
+            <!-- Style Categories -->
+            <div class="style-categories">
+                <button class="category-btn active" data-category="time">时间进度</button>
+                <button class="category-btn" data-category="visual">视觉风格</button>
+                <button class="category-btn" data-category="data">数据展示</button>
+            </div>
+
+            <!-- Time Progress Styles -->
+            <div class="styles-grid active" data-category="time">
+                <!-- Year Progress -->
+                <div class="style-card active" data-type="year">
+                    <div class="style-number">01</div>
+                    <div class="style-preview">
+                        <div class="preview-year">
+                            <div class="year-grid" id="yearGridPreview"></div>
+                            <div class="year-progress-text">
+                                <span class="progress-percent" id="yearPercent">0%</span>
+                                <span class="progress-label">已完成</span>
+                            </div>
+                        </div>
+                    </div>
+                    <h3 class="style-name">年度进度</h3>
+                    <p class="style-desc">将一年可视化为一组网格，每天都是一个单元格</p>
+                    <button class="btn btn-select" data-type="year">选择</button>
+                </div>
+
+                <!-- Life Calendar -->
+                <div class="style-card" data-type="life">
+                    <div class="style-number">02</div>
+                    <div class="style-preview">
+                        <div class="preview-life">
+                            <div class="life-grid" id="lifeGridPreview"></div>
+                            <div class="life-stats">
+                                <div class="stat-item">
+                                    <span class="stat-number" id="lifeWeeks">0</span>
+                                    <span class="stat-label">周已过</span>
+                                </div>
+                                <div class="stat-item">
+                                    <span class="stat-number" id="lifeRemaining">0</span>
+                                    <span class="stat-label">周剩余</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <h3 class="style-name">人生日历</h3>
+                    <p class="style-desc">以周为单位可视化你的人生旅程</p>
+                    <button class="btn btn-select" data-type="life">选择</button>
+                </div>
+
+                <!-- Goal Countdown -->
+                <div class="style-card" data-type="goal">
+                    <div class="style-number">03</div>
+                    <div class="style-preview">
+                        <div class="preview-goal">
+                            <div class="goal-circle" id="goalCircle">
+                                <svg viewBox="0 0 100 100">
+                                    <circle class="goal-bg" cx="50" cy="50" r="45"/>
+                                    <circle class="goal-progress" cx="50" cy="50" r="45" id="goalProgressCircle"/>
+                                </svg>
+                                <div class="goal-days" id="goalDays">0</div>
+                            </div>
+                            <div class="goal-name-preview" id="goalNamePreview">目标</div>
+                        </div>
+                    </div>
+                    <h3 class="style-name">目标倒计时</h3>
+                    <p class="style-desc">为重要目标创建倒计时，每天更新</p>
+                    <button class="btn btn-select" data-type="goal">选择</button>
+                </div>
+
+                <!-- Month Progress -->
+                <div class="style-card" data-type="month">
+                    <div class="style-number">04</div>
+                    <div class="style-preview">
+                        <div class="preview-month">
+                            <div class="month-bar" id="monthBarPreview">
+                                <div class="month-fill" id="monthFillPreview"></div>
+                            </div>
+                            <div class="month-text">
+                                <span class="month-percent" id="monthPercent">0%</span>
+                                <span class="month-name" id="monthNamePreview">本月</span>
+                            </div>
+                        </div>
+                    </div>
+                    <h3 class="style-name">月度进度</h3>
+                    <p class="style-desc">简洁的进度条展示本月已过时间</p>
+                    <button class="btn btn-select" data-type="month">选择</button>
+                </div>
+
+                <!-- Week Progress -->
+                <div class="style-card" data-type="week">
+                    <div class="style-number">05</div>
+                    <div class="style-preview">
+                        <div class="preview-week">
+                            <div class="week-dots" id="weekDotsPreview">
+                                <span class="week-dot"></span>
+                                <span class="week-dot"></span>
+                                <span class="week-dot"></span>
+                                <span class="week-dot"></span>
+                                <span class="week-dot"></span>
+                                <span class="week-dot"></span>
+                                <span class="week-dot"></span>
+                            </div>
+                            <div class="week-text" id="weekTextPreview">周一</div>
+                        </div>
+                    </div>
+                    <h3 class="style-name">本周进度</h3>
+                    <p class="style-desc">七天圆点展示本周进度</p>
+                    <button class="btn btn-select" data-type="week">选择</button>
+                </div>
+
+                <!-- Day Progress -->
+                <div class="style-card" data-type="day">
+                    <div class="style-number">06</div>
+                    <div class="style-preview">
+                        <div class="preview-day">
+                            <div class="day-clock" id="dayClockPreview">
+                                <div class="clock-face">
+                                    <div class="clock-hand hour" id="hourHand"></div>
+                                    <div class="clock-hand minute" id="minuteHand"></div>
+                                </div>
+                            </div>
+                            <div class="day-percent" id="dayPercent">0%</div>
+                        </div>
+                    </div>
+                    <h3 class="style-name">今日进度</h3>
+                    <p class="style-desc">模拟时钟展示今天已过时间</p>
+                    <button class="btn btn-select" data-type="day">选择</button>
+                </div>
+            </div>
+
+            <!-- Visual Styles -->
+            <div class="styles-grid" data-category="visual">
+                <!-- Minimal -->
+                <div class="style-card" data-type="minimal">
+                    <div class="style-number">07</div>
+                    <div class="style-preview">
+                        <div class="preview-minimal">
+                            <div class="minimal-line" id="minimalLinePreview">
+                                <div class="minimal-progress" id="minimalProgressPreview"></div>
+                            </div>
+                            <div class="minimal-text" id="minimalTextPreview">73%</div>
+                        </div>
+                    </div>
+                    <h3 class="style-name">极简主义</h3>
+                    <p class="style-desc">最纯粹的线条与数字，极致简约</p>
+                    <button class="btn btn-select" data-type="minimal">选择</button>
+                </div>
+
+                <!-- Gradient -->
+                <div class="style-card" data-type="gradient">
+                    <div class="style-number">08</div>
+                    <div class="style-preview">
+                        <div class="preview-gradient" id="gradientPreview">
+                            <div class="gradient-bar" id="gradientBarPreview"></div>
+                            <div class="gradient-text">2024</div>
+                        </div>
+                    </div>
+                    <h3 class="style-name">渐变流光</h3>
+                    <p class="style-desc">柔和的渐变色彩，优雅流动</p>
+                    <button class="btn btn-select" data-type="gradient">选择</button>
+                </div>
+
+                <!-- Cyberpunk -->
+                <div class="style-card" data-type="cyberpunk">
+                    <div class="style-number">09</div>
+                    <div class="style-preview">
+                        <div class="preview-cyberpunk">
+                            <div class="cyber-grid" id="cyberGridPreview"></div>
+                            <div class="cyber-text">
+                                <span class="cyber-glitch" id="cyberPercent">73%</span>
+                            </div>
+                        </div>
+                    </div>
+                    <h3 class="style-name">赛博朋克</h3>
+                    <p class="style-desc">霓虹光效与数字网格，未来感十足</p>
+                    <button class="btn btn-select" data-type="cyberpunk">选择</button>
+                </div>
+
+                <!-- Nature -->
+                <div class="style-card" data-type="nature">
+                    <div class="style-number">10</div>
+                    <div class="style-preview">
+                        <div class="preview-nature">
+                            <div class="nature-sun" id="natureSunPreview"></div>
+                            <div class="nature-horizon" id="natureHorizonPreview"></div>
+                            <div class="nature-text" id="natureTextPreview">日出</div>
+                        </div>
+                    </div>
+                    <h3 class="style-name">自然节律</h3>
+                    <p class="style-desc">日出日落可视化，感受自然节奏</p>
+                    <button class="btn btn-select" data-type="nature">选择</button>
+                </div>
+
+                <!-- Retro -->
+                <div class="style-card" data-type="retro">
+                    <div class="style-number">11</div>
+                    <div class="style-preview">
+                        <div class="preview-retro">
+                            <div class="retro-crt" id="retroCrtPreview">
+                                <div class="retro-text" id="retroTextPreview">YEAR 73%</div>
+                            </div>
+                        </div>
+                    </div>
+                    <h3 class="style-name">复古 CRT</h3>
+                    <p class="style-desc">老式显示器风格，怀旧像素风</p>
+                    <button class="btn btn-select" data-type="retro">选择</button>
+                </div>
+
+                <!-- Glass -->
+                <div class="style-card" data-type="glass">
+                    <div class="style-number">12</div>
+                    <div class="style-preview">
+                        <div class="preview-glass">
+                            <div class="glass-card" id="glassCardPreview">
+                                <div class="glass-progress" id="glassProgressPreview"></div>
+                                <div class="glass-text">73%</div>
+                            </div>
+                        </div>
+                    </div>
+                    <h3 class="style-name">毛玻璃</h3>
+                    <p class="style-desc">半透明磨砂效果，现代 iOS 风格</p>
+                    <button class="btn btn-select" data-type="glass">选择</button>
+                </div>
+            </div>
+
+            <!-- Data Display Styles -->
+            <div class="styles-grid" data-category="data">
+                <!-- Digital Clock -->
+                <div class="style-card" data-type="digital">
+                    <div class="style-number">13</div>
+                    <div class="style-preview">
+                        <div class="preview-digital">
+                            <div class="digital-time" id="digitalTimePreview">12:34</div>
+                            <div class="digital-date" id="digitalDatePreview">2024.01.15</div>
+                            <div class="digital-progress" id="digitalProgressPreview"></div>
+                        </div>
+                    </div>
+                    <h3 class="style-name">数字时钟</h3>
+                    <p class="style-desc">大字体时间显示，附带进度条</p>
+                    <button class="btn btn-select" data-type="digital">选择</button>
+                </div>
+
+                <!-- Quote -->
+                <div class="style-card" data-type="quote">
+                    <div class="style-number">14</div>
+                    <div class="style-preview">
+                        <div class="preview-quote">
+                            <div class="quote-text" id="quoteTextPreview">"时间是最宝贵的财富"</div>
+                            <div class="quote-author" id="quoteAuthorPreview">— 每日名言</div>
+                        </div>
+                    </div>
+                    <h3 class="style-name">每日名言</h3>
+                    <p class="style-desc">励志名言配合时间进度</p>
+                    <button class="btn btn-select" data-type="quote">选择</button>
+                </div>
+
+                <!-- Stats -->
+                <div class="style-card" data-type="stats">
+                    <div class="style-number">15</div>
+                    <div class="style-preview">
+                        <div class="preview-stats">
+                            <div class="stat-row">
+                                <span class="stat-label-small">今日</span>
+                                <span class="stat-bar"><span class="stat-fill" style="width: 60%"></span></span>
+                            </div>
+                            <div class="stat-row">
+                                <span class="stat-label-small">本周</span>
+                                <span class="stat-bar"><span class="stat-fill" style="width: 40%"></span></span>
+                            </div>
+                            <div class="stat-row">
+                                <span class="stat-label-small">本月</span>
+                                <span class="stat-bar"><span class="stat-fill" style="width: 50%"></span></span>
+                            </div>
+                            <div class="stat-row">
+                                <span class="stat-label-small">本年</span>
+                                <span class="stat-bar"><span class="stat-fill" style="width: 73%"></span></span>
+                            </div>
+                        </div>
+                    </div>
+                    <h3 class="style-name">数据看板</h3>
+                    <p class="style-desc">多维度时间统计，全面了解时间分配</p>
+                    <button class="btn btn-select" data-type="stats">选择</button>
+                </div>
+
+                <!-- Season -->
+                <div class="style-card" data-type="season">
+                    <div class="style-number">16</div>
+                    <div class="style-preview">
+                        <div class="preview-season">
+                            <div class="season-icon" id="seasonIconPreview">🌸</div>
+                            <div class="season-name" id="seasonNamePreview">春季</div>
+                            <div class="season-progress" id="seasonProgressPreview"></div>
+                        </div>
+                    </div>
+                    <h3 class="style-name">四季轮回</h3>
+                    <p class="style-desc">以季节为主题展示年度进度</p>
+                    <button class="btn btn-select" data-type="season">选择</button>
+                </div>
+
+                <!-- Binary -->
+                <div class="style-card" data-type="binary">
+                    <div class="style-number">17</div>
+                    <div class="style-preview">
+                        <div class="preview-binary">
+                            <div class="binary-code" id="binaryCodePreview">01001001</div>
+                            <div class="binary-percent" id="binaryPercentPreview">73%</div>
+                        </div>
+                    </div>
+                    <h3 class="style-name">二进制</h3>
+                    <p class="style-desc">程序员专属，二进制风格展示</p>
+                    <button class="btn btn-select" data-type="binary">选择</button>
+                </div>
+
+                <!-- Moon -->
+                <div class="style-card" data-type="moon">
+                    <div class="style-number">18</div>
+                    <div class="style-preview">
+                        <div class="preview-moon">
+                            <div class="moon-phase" id="moonPhasePreview">
+                                <div class="moon-shadow" id="moonShadowPreview"></div>
+                            </div>
+                            <div class="moon-name" id="moonNamePreview">上弦月</div>
+                        </div>
+                    </div>
+                    <h3 class="style-name">月相周期</h3>
+                    <p class="style-desc">展示当前月相，感受月亮变化</p>
+                    <button class="btn btn-select" data-type="moon">选择</button>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Customize Section -->
+    <section class="customize-section" id="customize">
+        <div class="container">
+            <h2 class="section-title">个性化定制</h2>
+            <div class="customize-layout">
+                <!-- Configuration Panel -->
+                <div class="config-panel">
+                    <div class="config-group">
+                        <h3 class="config-title">基本信息</h3>
+
+                        <div class="form-row">
+                            <label class="form-label">时区位置</label>
+                            <select class="form-select" id="locationSelect">
+                                <option value="Asia/Shanghai">中国 (UTC+8)</option>
+                                <option value="Asia/Tokyo">日本 (UTC+9)</option>
+                                <option value="Asia/Seoul">韩国 (UTC+9)</option>
+                                <option value="Europe/London">英国 (UTC+0)</option>
+                                <option value="Europe/Paris">法国 (UTC+1)</option>
+                                <option value="America/New_York">美国东部 (UTC-5)</option>
+                                <option value="America/Los_Angeles">美国西部 (UTC-8)</option>
+                                <option value="Australia/Sydney">澳大利亚 (UTC+10)</option>
+                            </select>
+                        </div>
+
+                        <div class="form-row" id="birthDateRow">
+                            <label class="form-label">出生日期</label>
+                            <input type="date" class="form-input" id="birthDate">
+                        </div>
+
+                        <div class="form-row" id="lifespanRow">
+                            <label class="form-label">预期寿命 (年)</label>
+                            <input type="number" class="form-input" id="lifespan" value="80" min="1" max="120">
+                        </div>
+
+                        <div class="form-row" id="goalNameRow" style="display: none;">
+                            <label class="form-label">目标名称</label>
+                            <input type="text" class="form-input" id="goalName" placeholder="例如：毕业、婚礼、项目发布">
+                        </div>
+
+                        <div class="form-row" id="targetDateRow" style="display: none;">
+                            <label class="form-label">目标日期</label>
+                            <input type="date" class="form-input" id="targetDate">
+                        </div>
+                    </div>
+
+                    <div class="config-group">
+                        <h3 class="config-title">颜色配置</h3>
+                        <div class="color-config">
+                            <div class="color-item">
+                                <label class="form-label">背景色</label>
+                                <div class="color-picker-wrapper">
+                                    <input type="color" class="color-picker" id="bgColor" value="#000000">
+                                    <span class="color-value" id="bgColorValue">#000000</span>
+                                </div>
+                            </div>
+                            <div class="color-item">
+                                <label class="form-label">强调色</label>
+                                <div class="color-picker-wrapper">
+                                    <input type="color" class="color-picker" id="accentColor" value="#FFFFFF">
+                                    <span class="color-value" id="accentColorValue">#FFFFFF</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="config-group">
+                        <h3 class="config-title">设备信息</h3>
+
+                        <div class="form-row">
+                            <label class="form-label">选择设备</label>
+                            <select class="form-select" id="deviceSelect">
+                                <option value="custom">自定义分辨率</option>
+                                <optgroup label="iPhone 17 系列 (2025)">
+                                    <option value="1320,2868">iPhone 17 Pro Max</option>
+                                    <option value="1290,2796">iPhone 17 Pro</option>
+                                    <option value="1290,2796">iPhone 17 Plus</option>
+                                    <option value="1179,2556">iPhone 17</option>
+                                    <option value="1179,2556">iPhone 17 Slim/Air</option>
+                                </optgroup>
+                                <optgroup label="iPhone 16 系列 (2024)">
+                                    <option value="1320,2868">iPhone 16 Pro Max</option>
+                                    <option value="1206,2622">iPhone 16 Pro</option>
+                                    <option value="1179,2556">iPhone 16 Plus</option>
+                                    <option value="1179,2556">iPhone 16</option>
+                                </optgroup>
+                                <optgroup label="iPhone 15 系列 (2023)">
+                                    <option value="1290,2796">iPhone 15 Pro Max</option>
+                                    <option value="1179,2556">iPhone 15 Pro</option>
+                                    <option value="1290,2796">iPhone 15 Plus</option>
+                                    <option value="1179,2556">iPhone 15</option>
+                                </optgroup>
+                                <optgroup label="iPhone 14 系列 (2022)">
+                                    <option value="1290,2796">iPhone 14 Pro Max</option>
+                                    <option value="1179,2556">iPhone 14 Pro</option>
+                                    <option value="1284,2778">iPhone 14 Plus</option>
+                                    <option value="1170,2532">iPhone 14</option>
+                                </optgroup>
+                                <optgroup label="iPhone 13/12 系列">
+                                    <option value="1284,2778">iPhone 13 Pro Max</option>
+                                    <option value="1170,2532">iPhone 13 Pro / 13 / 12 Pro</option>
+                                    <option value="1170,2532">iPhone 12</option>
+                                    <option value="1080,2340">iPhone 13 mini / 12 mini</option>
+                                </optgroup>
+                                <optgroup label="iPhone X/XS/11 系列">
+                                    <option value="1242,2688">iPhone 11 Pro Max / XS Max</option>
+                                    <option value="1125,2436">iPhone 11 Pro / XS / X</option>
+                                    <option value="828,1792">iPhone 11 / XR</option>
+                                </optgroup>
+                                <optgroup label="iPhone SE/8/7">
+                                    <option value="750,1334">iPhone SE (3rd/2nd) / 8 / 7 / 6s</option>
+                                    <option value="1080,1920">iPhone 8 Plus / 7 Plus</option>
+                                </optgroup>
+                                <optgroup label="Android 旗舰 (2024-2025)">
+                                    <option value="1440,3200">Samsung S25 Ultra / S24 Ultra</option>
+                                    <option value="1080,2340">Samsung S25 / S24 / S23</option>
+                                    <option value="1440,3120">Google Pixel 9 Pro XL</option>
+                                    <option value="1080,2424">Google Pixel 9 Pro / 9</option>
+                                    <option value="1440,3200">OnePlus 13 / 12</option>
+                                    <option value="1440,3168">Xiaomi 15 Pro / 14 Ultra</option>
+                                    <option value="1200,2670">Xiaomi 15 / 14</option>
+                                    <option value="1440,3200">OPPO Find X8 Pro / X7 Ultra</option>
+                                    <option value="1264,2780">vivo X200 Pro / X100 Ultra</option>
+                                    <option value="1440,3200">Huawei Mate 70 Pro / Pura 70 Ultra</option>
+                                </optgroup>
+                                <optgroup label="Android 折叠屏">
+                                    <option value="1812,2176">Samsung Galaxy Z Fold 6 (内屏)</option>
+                                    <option value="904,2316">Samsung Galaxy Z Fold 6 (外屏)</option>
+                                    <option value="1080,2640">Samsung Galaxy Z Flip 6 (内屏)</option>
+                                    <option value="2640,1080">Samsung Galaxy Z Flip 6 (外屏)</option>
+                                    <option value="2076,2152">Google Pixel 9 Pro Fold (内屏)</option>
+                                    <option value="1080,2424">Google Pixel 9 Pro Fold (外屏)</option>
+                                    <option value="2156,2156">OnePlus Open (内屏)</option>
+                                    <option value="1116,2484">Xiaomi MIX Fold 4 (内屏)</option>
+                                    <option value="1316,2832">Huawei Mate X6 (内屏)</option>
+                                </optgroup>
+                                <optgroup label="iPad Pro (M4/M2)">
+                                    <option value="2064,2752">iPad Pro 13" (M4)</option>
+                                    <option value="1668,2388">iPad Pro 11" (M4)</option>
+                                    <option value="2048,2732">iPad Pro 12.9" (M2)</option>
+                                    <option value="1668,2388">iPad Pro 11" (M2)</option>
+                                </optgroup>
+                                <optgroup label="iPad Air / mini">
+                                    <option value="1640,2360">iPad Air 13" (M2)</option>
+                                    <option value="1640,2360">iPad Air 11" (M2)</option>
+                                    <option value="1488,2266">iPad mini (A17 Pro)</option>
+                                    <option value="1620,2160">iPad Air 5 / iPad mini 6</option>
+                                </optgroup>
+                                <optgroup label="iPad (基础款)">
+                                    <option value="1620,2160">iPad 10th gen (2022)</option>
+                                    <option value="1620,2160">iPad 9th gen (2021)</option>
+                                </optgroup>
+                                <optgroup label="MacBook">
+                                    <option value="3024,1964">MacBook Pro 14" (M3/M4)</option>
+                                    <option value="3456,2234">MacBook Pro 16" (M3/M4)</option>
+                                    <option value="2880,1864">MacBook Air 15" (M3)</option>
+                                    <option value="2560,1664">MacBook Air 13" (M3/M2)</option>
+                                </optgroup>
+                                <optgroup label="iMac / Studio Display">
+                                    <option value="5120,2880">iMac 27" / Studio Display 5K</option>
+                                    <option value="4480,2520">iMac 24" (M3) 4.5K</option>
+                                    <option value="4096,2304">Pro Display XDR</option>
+                                </optgroup>
+                                <optgroup label="桌面显示器">
+                                    <option value="5120,2880">5K Ultra Fine (5120×2880)</option>
+                                    <option value="3840,2160">4K UHD (3840×2160)</option>
+                                    <option value="3440,1440">UltraWide QHD (3440×1440)</option>
+                                    <option value="3840,1600">UltraWide 4K (3840×1600)</option>
+                                    <option value="2560,1440">2K QHD (2560×1440)</option>
+                                    <option value="2560,1080">UltraWide FHD (2560×1080)</option>
+                                    <option value="1920,1080">Full HD (1920×1080)</option>
+                                    <option value="1920,1200">WUXGA (1920×1200)</option>
+                                </optgroup>
+                            </select>
+                        </div>
+
+                        <div class="form-row custom-resolution" id="customResolutionRow">
+                            <label class="form-label">自定义分辨率</label>
+                            <div class="resolution-inputs">
+                                <input type="number" class="form-input" id="customWidth" placeholder="宽度" value="1179" min="320" max="7680">
+                                <span class="resolution-separator">×</span>
+                                <input type="number" class="form-input" id="customHeight" placeholder="高度" value="2556" min="480" max="4320">
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <label class="form-label">
+                                <input type="checkbox" id="autoDetectDevice" checked>
+                                自动检测当前设备
+                            </label>
+                        </div>
+
+                        <div class="device-info-card" id="deviceInfoCard">
+                            <div class="device-info-row">
+                                <span class="device-info-label">屏幕分辨率</span>
+                                <span class="device-info-value" id="deviceResolution">检测中...</span>
+                            </div>
+                            <div class="device-info-row">
+                                <span class="device-info-label">像素密度</span>
+                                <span class="device-info-value" id="devicePixelRatio">-</span>
+                            </div>
+                            <div class="device-info-row">
+                                <span class="device-info-label">设备类型</span>
+                                <span class="device-info-value" id="deviceType">-</span>
+                            </div>
+                            <div class="device-info-row">
+                                <span class="device-info-label">宽高比</span>
+                                <span class="device-info-value" id="deviceAspectRatio">-</span>
+                            </div>
+                        </div>
+
+                        <p class="device-hint">壁纸将根据选择的分辨率生成，确保完美适配你的设备</p>
+                    </div>
+                </div>
+
+                <!-- Live Preview -->
+                <div class="preview-panel">
+                    <h3 class="preview-title">实时预览</h3>
+                    <div class="preview-container">
+                        <div class="preview-device">
+                            <div class="preview-screen" id="previewScreen">
+                                <!-- Dynamic content will be rendered here -->
+                            </div>
+                        </div>
+                    </div>
+                    <div class="preview-actions">
+                        <button class="btn btn-secondary" id="downloadBtn">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                                <polyline points="7 10 12 15 17 10"/>
+                                <line x1="12" y1="15" x2="12" y2="3"/>
+                            </svg>
+                            下载壁纸
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- URL Generator -->
+            <div class="url-generator">
+                <h3 class="url-title">你的专属壁纸链接</h3>
+                <div class="url-box">
+                    <input type="text" class="url-input" id="wallpaperUrl" readonly>
+                    <button class="btn btn-copy" id="copyUrlBtn">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                        </svg>
+                        复制
+                    </button>
+                </div>
+                <p class="url-hint">复制此链接用于自动化设置</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Setup Section -->
+    <section class="setup-section" id="setup">
+        <div class="container">
+            <h2 class="section-title">设置自动化</h2>
+            <p class="section-subtitle">设置一次，每日自动更新</p>
+
+            <div class="setup-tabs">
+                <button class="tab-btn active" data-tab="ios">iOS (快捷指令)</button>
+                <button class="tab-btn" data-tab="android">Android (MacroDroid)</button>
+            </div>
+
+            <!-- iOS Setup -->
+            <div class="tab-content active" id="iosTab">
+                <div class="setup-steps">
+                    <div class="step">
+                        <div class="step-number">1</div>
+                        <div class="step-content">
+                            <h4>复制壁纸链接</h4>
+                            <p>在上方定制区域生成并复制你的专属壁纸 URL</p>
+                        </div>
+                    </div>
+                    <div class="step">
+                        <div class="step-number">2</div>
+                        <div class="step-content">
+                            <h4>创建自动化</h4>
+                            <p>打开"快捷指令"App → 自动化 → 创建个人自动化 → 特定时间</p>
+                            <p>设置每天 6:00 AM 触发</p>
+                        </div>
+                    </div>
+                    <div class="step">
+                        <div class="step-number">3</div>
+                        <div class="step-content">
+                            <h4>配置快捷指令</h4>
+                            <p>添加动作："获取 URL 内容" → 粘贴你的壁纸链接</p>
+                            <p>添加动作："设定墙纸照片" → 选择"锁屏"</p>
+                        </div>
+                    </div>
+                    <div class="step">
+                        <div class="step-number">4</div>
+                        <div class="step-content">
+                            <h4>完成设置</h4>
+                            <p>关闭"运行前询问"，启用自动化</p>
+                            <p>在壁纸设置中禁用"裁剪主体"和"显示预览"</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Android Setup -->
+            <div class="tab-content" id="androidTab">
+                <div class="setup-steps">
+                    <div class="step">
+                        <div class="step-number">1</div>
+                        <div class="step-content">
+                            <h4>复制壁纸链接</h4>
+                            <p>在上方定制区域生成并复制你的专属壁纸 URL</p>
+                        </div>
+                    </div>
+                    <div class="step">
+                        <div class="step-number">2</div>
+                        <div class="step-content">
+                            <h4>安装 MacroDroid</h4>
+                            <p>从 Google Play 商店下载并安装 MacroDroid 应用</p>
+                        </div>
+                    </div>
+                    <div class="step">
+                        <div class="step-number">3</div>
+                        <div class="step-content">
+                            <h4>创建宏</h4>
+                            <p>点击"添加宏" → 设置触发器："日期/时间" → "每天"</p>
+                            <p>设置时间为 00:01，选择全周</p>
+                        </div>
+                    </div>
+                    <div class="step">
+                        <div class="step-number">4</div>
+                        <div class="step-content">
+                            <h4>配置动作</h4>
+                            <p>添加动作："HTTP 请求" → GET 方法 → 粘贴你的壁纸 URL</p>
+                            <p>添加动作："设置壁纸" → 选择主屏幕和锁屏</p>
+                        </div>
+                    </div>
+                    <div class="step">
+                        <div class="step-number">5</div>
+                        <div class="step-content">
+                            <h4>测试宏</h4>
+                            <p>保存宏并点击"测试"按钮验证是否正常工作</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-brand">
+                    <span class="footer-logo">LifeGrid</span>
+                    <p class="footer-tagline">让时间可见</p>
+                </div>
+                <div class="footer-links">
+                    <a href="#wallpapers">壁纸</a>
+                    <a href="#customize">定制</a>
+                    <a href="#setup">设置</a>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2024 LifeGrid. 让每一刻都更有意义。</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Canvas for wallpaper generation -->
+    <canvas id="wallpaperCanvas" style="display: none;"></canvas>
+
+    <script src="script.js"></script>
+</body>
+</html>

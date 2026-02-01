@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LifeGrid Wallpaper</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background: #000;
+        }
+
+        #wallpaperCanvas {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="wallpaperCanvas"></canvas>
+
+    <script>
+        /**
+         * LifeGrid Wallpaper Renderer
+         * Renders wallpaper based on URL parameters for automation
+         */
+
+        // Parse URL parameters
+        function getParams() {
+            const params = new URLSearchParams(window.location.search);
+            return {
+                type: params.get('type') || 'year',
+                bg: params.get('bg') || '#000000',
+                accent: params.get('accent') || '#FFFFFF',
+                birth: params.get('birth'),
+                lifespan: parseInt(params.get('lifespan')) || 80,
+                target: params.get('target'),
+                name: params.get('name') || '目标',
+                width: parseInt(params.get('w')) || window.innerWidth,
+                height: parseInt(params.get('h')) || window.innerHeight
+            };
+        }
+
+        // Helper: Draw rounded rectangle
+        function roundRect(ctx, x, y, width, height, radius) {
+            ctx.beginPath();
+            ctx.moveTo(x + radius, y);
+            ctx.lineTo(x + width - radius, y);
+            ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+            ctx.lineTo(x + width, y + height - radius);
+            ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+            ctx.lineTo(x + radius, y + height);
+            ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+            ctx.lineTo(x, y + radius);
+            ctx.quadraticCurveTo(x, y, x + radius, y);
+            ctx.closePath();
+        }
+
+        // Year Progress Wallpaper
+        function drawYear(ctx, width, height, config) {
+            const now = new Date();
+            const startOfYear = new Date(now.getFullYear(), 0, 1);
+            const endOfYear = new Date(now.getFullYear() + 1, 0, 1);
+            const totalDays = (endOfYear - startOfYear) / (1000 * 60 * 60 * 24);
+            const daysPassed = (now - startOfYear) / (1000 * 60 * 60 * 24);
+            const percent = Math.min(100, Math.max(0, (daysPassed / totalDays) * 100));
+
+            // Background
+            ctx.fillStyle = config.bg;
+            ctx.fillRect(0, 0, width, height);
+
+            // Grid settings
+            const cols = 13;
+            const rows = 10;
+            const cellSize = Math.min(width, height) / 25;
+            const gap = cellSize * 0.3;
+            const gridWidth = cols * cellSize + (cols - 1) * gap;
+            const gridHeight = rows * cellSize + (rows - 1) * gap;
+            const startX = (width - gridWidth) / 2;
+            const startY = (height - gridHeight) / 2 - height * 0.05;
+
+            const totalCells = cols * rows;
+            const filledCount = Math.floor((percent / 100) * totalCells);
+
+            // Draw cells
+            for (let i = 0; i < totalCells; i++) {
+                const row = Math.floor(i / cols);
+                const col = i % cols;
+                const x = startX + col * (cellSize + gap);
+                const y = startY + row * (cellSize + gap);
+
+                ctx.fillStyle = config.accent;
+                ctx.globalAlpha = i < filledCount ? 1 : 0.2;
+
+                roundRect(ctx, x, y, cellSize, cellSize, cellSize * 0.2);
+                ctx.fill();
+            }
+
+            ctx.globalAlpha = 1;
+
+            // Draw percentage
+            ctx.fillStyle = config.accent;
+            ctx.font = `bold ${Math.min(width, height) / 8}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(`${Math.floor(percent)}%`, width / 2, startY + gridHeight + height * 0.08);
+
+            // Draw year
+            ctx.font = `500 ${Math.min(width, height) / 25}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
+            ctx.globalAlpha = 0.6;
+            ctx.fillText(String(now.getFullYear()), width / 2, startY + gridHeight + height * 0.12);
+        }
+
+        // Life Calendar Wallpaper
+        function drawLife(ctx, width, height, config) {
+            if (!config.birth) {
+                // Fallback if no birth date
+                ctx.fillStyle = config.bg;
+                ctx.fillRect(0, 0, width, height);
+                ctx.fillStyle = config.accent;
+                ctx.font = `bold ${Math.min(width, height) / 15}px sans-serif`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('请设置出生日期', width / 2, height / 2);
+                return;
+            }
+
+            const birthDate = new Date(config.birth);
+            const now = new Date();
+            const lifespanWeeks = config.lifespan * 52;
+            const weeksLived = Math.floor((now - birthDate) / (1000 * 60 * 60 * 24 * 7));
+
+            // Background
+            ctx.fillStyle = config.bg;
+            ctx.fillRect(0, 0, width, height);
+
+            // Grid settings
+            const cols = 52;
+            const rows = Math.ceil(lifespanWeeks / cols);
+            const maxCellSize = Math.min(width / (cols + 4), height / (rows + 6));
+            const cellSize = Math.min(maxCellSize, height / 100);
+            const gap = cellSize * 0.15;
+            const gridWidth = cols * cellSize + (cols - 1) * gap;
+            const gridHeight = rows * cellSize + (rows - 1) * gap;
+            const startX = (width - gridWidth) / 2;
+            const startY = (height - gridHeight) / 2;
+
+            // Draw cells
+            for (let i = 0; i < lifespanWeeks; i++) {
+                const row = Math.floor(i / cols);
+                const col = i % cols;
+                const x = startX + col * (cellSize + gap);
+                const y = startY + row * (cellSize + gap);
+
+                ctx.fillStyle = config.accent;
+
+                if (i < weeksLived) {
+                    ctx.globalAlpha = 1;
+                } else if (i === weeksLived) {
+                    ctx.globalAlpha = 1;
+                    ctx.shadowColor = config.accent;
+                    ctx.shadowBlur = cellSize * 0.5;
+                } else {
+                    ctx.globalAlpha = 0.2;
+                    ctx.shadowBlur = 0;
+                }
+
+                ctx.beginPath();
+                ctx.arc(x + cellSize / 2, y + cellSize / 2, cellSize / 2, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.shadowBlur = 0;
+            }
+
+            ctx.globalAlpha = 1;
+
+            // Draw stats at bottom
+            ctx.fillStyle = config.accent;
+            ctx.font = `500 ${Math.min(width, height) / 35}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.globalAlpha = 0.6;
+
+            const statsY = height - height * 0.05;
+            ctx.fillText(`${weeksLived.toLocaleString()} / ${lifespanWeeks.toLocaleString()} 周`, width / 2, statsY);
+        }
+
+        // Goal Countdown Wallpaper
+        function drawGoal(ctx, width, height, config) {
+            if (!config.target) {
+                // Fallback if no target date
+                ctx.fillStyle = config.bg;
+                ctx.fillRect(0, 0, width, height);
+                ctx.fillStyle = config.accent;
+                ctx.font = `bold ${Math.min(width, height) / 15}px sans-serif`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('请设置目标日期', width / 2, height / 2);
+                return;
+            }
+
+            const targetDate = new Date(config.target);
+            const now = new Date();
+            const daysRemaining = Math.ceil((targetDate - now) / (1000 * 60 * 60 * 24));
+            const totalDays = 100; // Reference for progress circle
+            const percent = Math.min(100, Math.max(0, 100 - (daysRemaining / totalDays) * 100));
+
+            // Background
+            ctx.fillStyle = config.bg;
+            ctx.fillRect(0, 0, width, height);
+
+            const centerX = width / 2;
+            const centerY = height / 2 - height * 0.03;
+            const radius = Math.min(width, height) / 5;
+            const strokeWidth = radius * 0.12;
+
+            // Draw background circle
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+            ctx.strokeStyle = config.accent;
+            ctx.globalAlpha = 0.2;
+            ctx.lineWidth = strokeWidth;
+            ctx.stroke();
+
+            // Draw progress arc
+            const endAngle = -Math.PI / 2 + (percent / 100) * Math.PI * 2;
+
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, radius, -Math.PI / 2, endAngle);
+            ctx.strokeStyle = config.accent;
+            ctx.globalAlpha = 1;
+            ctx.lineCap = 'round';
+            ctx.stroke();
+
+            // Draw days
+            ctx.fillStyle = config.accent;
+            ctx.font = `bold ${radius * 0.8}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(String(Math.max(0, daysRemaining)), centerX, centerY);
+
+            // Draw label
+            ctx.font = `500 ${radius * 0.2}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
+            ctx.globalAlpha = 0.6;
+            ctx.fillText('剩余天数', centerX, centerY + radius + radius * 0.3);
+
+            // Draw goal name
+            ctx.font = `600 ${radius * 0.22}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
+            ctx.globalAlpha = 1;
+            ctx.fillText(config.name, centerX, centerY + radius + radius * 0.6);
+        }
+
+        // Main render function
+        function render() {
+            const canvas = document.getElementById('wallpaperCanvas');
+            const ctx = canvas.getContext('2d');
+            const config = getParams();
+
+            // Set canvas size
+            canvas.width = config.width;
+            canvas.height = config.height;
+
+            // Render based on type
+            switch (config.type) {
+                case 'year':
+                    drawYear(ctx, config.width, config.height, config);
+                    break;
+                case 'life':
+                    drawLife(ctx, config.width, config.height, config);
+                    break;
+                case 'goal':
+                    drawGoal(ctx, config.width, config.height, config);
+                    break;
+                default:
+                    drawYear(ctx, config.width, config.height, config);
+            }
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', render);
+
+        // Re-render on resize
+        window.addEventListener('resize', render);
+    </script>
+</body>
+</html>

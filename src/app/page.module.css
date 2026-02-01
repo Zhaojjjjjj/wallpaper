@@ -1,0 +1,53 @@
+.main {
+	min-height: 100vh;
+	padding-bottom: var(--spacing-xl);
+}
+
+.grid {
+	display: grid;
+	grid-template-columns: 1fr;
+	gap: var(--spacing-xl);
+	padding-top: var(--spacing-xl);
+}
+
+@media (min-width: 1024px) {
+	.grid {
+		grid-template-columns: 1fr 1fr; /* 50/50 split or 40/60? Let's do 1 : 1 for now or 450px fixed left? */
+		/* Better: Preview takes space it needs but sticky. Left usually 40% */
+		grid-template-columns: 45% 50%;
+		justify-content: space-between;
+	}
+}
+
+.previewCol {
+	position: relative;
+}
+
+.stickyWrapper {
+	position: sticky;
+	top: 2rem;
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing-lg);
+}
+
+.controlsCol {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing-xl);
+}
+
+.sectionHeading {
+	margin-bottom: var(--spacing-md);
+	color: var(--text-main);
+	font-size: 1.5rem;
+}
+
+.actions {
+	display: flex;
+	justify-content: center;
+}
+
+.downloadBtn {
+	width: 100%;
+}
