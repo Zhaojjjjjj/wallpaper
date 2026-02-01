@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { Input } from "@/components/common/Input";
 import { WallpaperConfig } from "@/lib/types";
 import styles from "./ConfigPanel.module.css";
@@ -7,6 +7,16 @@ interface ConfigPanelProps {
 	config: WallpaperConfig;
 	onChange: (newConfig: WallpaperConfig) => void;
 }
+
+// Preset themes
+const PRESET_THEMES = [
+	{ name: "经典黑", bg: "#000000", accent: "#ffffff" },
+	{ name: "暗夜蓝", bg: "#0a0a1a", accent: "#4fc3f7" },
+	{ name: "森林绿", bg: "#0d1f0d", accent: "#81c784" },
+	{ name: "暖橙色", bg: "#1a0f0a", accent: "#ff8a65" },
+	{ name: "白底紫", bg: "#ffffff", accent: "#9c27b0" },
+	{ name: "自定义", bg: "", accent: "" },
+];
 
 const DEVICES = [
 	// iPhone 17 series
@@ -62,6 +72,8 @@ const DEVICES = [
 type ThemeField = "bg" | "accent" | "text";
 
 export const ConfigPanel: React.FC<ConfigPanelProps> = ({ config, onChange }) => {
+	const [customTheme, setCustomTheme] = useState(false);
+
 	const handleChange = (field: keyof WallpaperConfig | `theme.${ThemeField}`, value: string | number) => {
 		if (field.startsWith("theme.")) {
 			const themeField = field.split(".")[1];
@@ -79,6 +91,27 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ config, onChange }) =>
 		if (idx === -1) return; // Custom
 		const device = DEVICES[idx];
 		onChange({ ...config, width: device.width, height: device.height });
+	};
+
+	const handleThemeSelect = (index: number) => {
+		const theme = PRESET_THEMES[index];
+		if (theme.name === "自定义") {
+			setCustomTheme(true);
+		} else {
+			setCustomTheme(false);
+			onChange({
+				...config,
+				theme: { ...config.theme, bg: theme.bg, accent: theme.accent, text: theme.accent },
+			});
+		}
+	};
+
+	// Get current theme index
+	const getCurrentThemeIndex = () => {
+		const index = PRESET_THEMES.findIndex(
+			(t) => t.bg === config.theme.bg && t.accent === config.theme.accent
+		);
+		return index >= 0 ? index : PRESET_THEMES.length - 1; // Return custom if not found
 	};
 
 	return (
@@ -108,10 +141,27 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ config, onChange }) =>
 
 			<h3 className={styles.sectionTitle}>主题</h3>
 			<div className={styles.group}>
-				<div className={styles.row}>
-					<Input label="背景色" type="color" value={config.theme.bg} onChange={(e) => handleChange("theme.bg", e.target.value)} />
-					<Input label="强调色" type="color" value={config.theme.accent} onChange={(e) => handleChange("theme.accent", e.target.value)} />
+				<div className={styles.themeGrid}>
+					{PRESET_THEMES.map((theme, index) => (
+						<button
+							key={theme.name}
+							className={`${styles.themeOption} ${getCurrentThemeIndex() === index ? styles.themeActive : ""}`}
+							onClick={() => handleThemeSelect(index)}
+						>
+							<div className={styles.themePreview} style={{ background: theme.bg || config.theme.bg }}>
+								<div className={styles.themeDot} style={{ background: theme.accent || config.theme.accent }} />
+							</div>
+							<span className={styles.themeName}>{theme.name}</span>
+						</button>
+					))}
 				</div>
+
+				{customTheme && (
+					<div className={styles.row}>
+						<Input label="背景色" type="color" value={config.theme.bg} onChange={(e) => handleChange("theme.bg", e.target.value)} />
+						<Input label="强调色" type="color" value={config.theme.accent} onChange={(e) => handleChange("theme.accent", e.target.value)} />
+					</div>
+				)}
 			</div>
 
 			{/* Specific Configs */}

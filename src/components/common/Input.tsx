@@ -1,4 +1,4 @@
-import React, { InputHTMLAttributes } from "react";
+import React, { InputHTMLAttributes, useRef } from "react";
 import styles from "./Input.module.css";
 
 interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
@@ -6,11 +6,22 @@ interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
 	wrapperClassName?: string;
 }
 
-export const Input: React.FC<InputProps> = ({ label, className = "", wrapperClassName = "", ...props }) => {
+export const Input: React.FC<InputProps> = ({ label, className = "", wrapperClassName = "", type, ...props }) => {
+	const inputRef = useRef<HTMLInputElement>(null);
+
+	const handleWrapperClick = () => {
+		if (type === "date" && inputRef.current) {
+			inputRef.current.showPicker?.();
+		}
+	};
+
 	return (
-		<div className={`${styles.wrapper} ${wrapperClassName}`}>
+		<div
+			className={`${styles.wrapper} ${wrapperClassName} ${type === "date" ? styles.dateWrapper : ""}`}
+			onClick={handleWrapperClick}
+		>
 			{label && <label className={styles.label}>{label}</label>}
-			<input className={`${styles.input} ${className}`} {...props} />
+			<input ref={inputRef} className={`${styles.input} ${className}`} type={type} {...props} />
 		</div>
 	);
 };
