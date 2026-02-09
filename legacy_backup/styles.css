@@ -14,12 +14,27 @@
     --border: #222222;
     --border-hover: #333333;
     --card-bg: #0f0f0f;
+    --header-bg: rgba(0, 0, 0, 0.8);
     --success: #4ade80;
     --radius-sm: 8px;
     --radius-md: 12px;
     --radius-lg: 16px;
     --radius-xl: 24px;
     --transition: all 0.3s ease;
+}
+
+body.light-theme {
+    --bg-primary: #f5f7fb;
+    --bg-secondary: #eef2f7;
+    --bg-tertiary: #e5ebf3;
+    --text-primary: #101828;
+    --text-secondary: #344054;
+    --text-tertiary: #667085;
+    --accent: #101828;
+    --border: #d0d5dd;
+    --border-hover: #98a2b3;
+    --card-bg: #ffffff;
+    --header-bg: rgba(255, 255, 255, 0.85);
 }
 
 /* Reset & Base */
@@ -39,6 +54,7 @@ body {
     color: var(--text-primary);
     line-height: 1.6;
     overflow-x: hidden;
+    transition: background-color 0.25s ease, color 0.25s ease;
 }
 
 .container {
@@ -56,7 +72,7 @@ body {
     left: 0;
     right: 0;
     z-index: 1000;
-    background: rgba(0, 0, 0, 0.8);
+    background: var(--header-bg);
     backdrop-filter: blur(20px);
     border-bottom: 1px solid var(--border);
 }
@@ -342,14 +358,14 @@ body {
 
 .year-grid {
     display: grid;
-    grid-template-columns: repeat(13, 6px);
+    grid-template-columns: repeat(20, 6px);
     gap: 2px;
 }
 
 .year-cell {
     width: 6px;
     height: 6px;
-    border-radius: 1px;
+    border-radius: 50%;
     background: var(--text-tertiary);
     opacity: 0.3;
 }
@@ -794,19 +810,21 @@ body {
     border-radius: 24px;
     padding: 8px;
     box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+    transition: width 0.25s ease, height 0.25s ease, border-radius 0.25s ease;
+}
+
+.preview-device.landscape {
+    border-radius: 20px;
 }
 
 .preview-device::before {
-    content: '';
-    position: absolute;
-    top: 16px;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 60px;
-    height: 20px;
-    background: var(--bg-primary);
-    border-radius: 0 0 12px 12px;
-    z-index: 10;
+    content: none;
+    display: none;
+}
+
+.preview-device.landscape::before {
+    content: none;
+    display: none;
 }
 
 .preview-screen {
@@ -820,6 +838,21 @@ body {
     align-items: center;
     justify-content: center;
     position: relative;
+}
+
+.preview-fallback-hint {
+    position: absolute;
+    left: 8px;
+    right: 8px;
+    bottom: 10px;
+    padding: 6px 8px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
+    background: var(--bg-tertiary);
+    color: var(--text-secondary);
+    font-size: 11px;
+    line-height: 1.25;
+    text-align: center;
 }
 
 .preview-actions {
@@ -1563,7 +1596,9 @@ body {
    Preview Screen Content
    ======================================== */
 .preview-year-full,
-.preview-goal-full {
+.preview-goal-full,
+.preview-binary-full,
+.preview-moon-full {
     width: 100%;
     height: 100%;
     display: flex;
@@ -1573,16 +1608,135 @@ body {
     padding: 20px;
 }
 
+.preview-simple-full,
+.preview-gradient-full,
+.preview-cyberpunk-full {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 16px;
+}
+
+.simple-progress-track,
+.simple-line-track {
+    width: 80%;
+    height: 8px;
+    border-radius: 99px;
+    background: rgba(255, 255, 255, 0.14);
+    overflow: hidden;
+}
+
+.simple-line-track {
+    height: 3px;
+}
+
+.simple-progress-fill,
+.simple-line-fill {
+    height: 100%;
+    border-radius: inherit;
+}
+
+.simple-value {
+    font-size: 30px;
+    font-weight: 700;
+    line-height: 1;
+}
+
+.simple-label {
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.week-dots-full {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 6px;
+}
+
+.week-dot-full {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+}
+
+.cyber-grid-full {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 3px;
+}
+
+.cyber-cell-full {
+    width: 8px;
+    height: 8px;
+}
+
+.retro-text-full {
+    font-family: 'Courier New', monospace;
+    font-size: 20px;
+    font-weight: 700;
+}
+
+.glass-card-full {
+    width: 80%;
+    padding: 18px;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.06);
+    backdrop-filter: blur(8px);
+    text-align: center;
+}
+
+.digital-time-full {
+    font-family: 'SF Mono', Menlo, Monaco, monospace;
+    font-size: 32px;
+    font-weight: 700;
+}
+
+.quote-text-full {
+    font-size: 13px;
+    text-align: center;
+    line-height: 1.6;
+    max-width: 90%;
+}
+
+.stat-row-full {
+    width: 92%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.stat-label-full {
+    font-size: 12px;
+}
+
+.stat-value-full {
+    font-size: 16px;
+    font-weight: 700;
+}
+
+.season-icon-full {
+    font-size: 36px;
+    line-height: 1;
+}
+
 .preview-year-full .year-grid-full {
     display: grid;
-    grid-template-columns: repeat(13, 1fr);
-    gap: 3px;
+    grid-template-columns: repeat(20, 1fr);
+    gap: 2px;
     margin-bottom: 20px;
+    width: 100%;
+    justify-items: center;
 }
 
 .preview-year-full .year-cell {
-    width: 8px;
-    height: 8px;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
 }
 
 .preview-year-full .year-info {
@@ -1596,10 +1750,48 @@ body {
 }
 
 .preview-year-full .year-label {
-    font-size: 10px;
+    font-size: 11px;
     color: var(--text-secondary);
-    text-transform: uppercase;
-    letter-spacing: 1px;
+    letter-spacing: 0.2px;
+}
+
+.preview-binary-full {
+    font-family: 'SF Mono', Menlo, Monaco, monospace;
+    gap: 14px;
+}
+
+.binary-code-full {
+    font-size: 15px;
+    letter-spacing: 3px;
+}
+
+.binary-percent-full {
+    font-size: 34px;
+    font-weight: 700;
+}
+
+.preview-moon-full {
+    gap: 14px;
+}
+
+.moon-phase-full {
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 0 20px rgba(255, 255, 255, 0.2);
+}
+
+.moon-shadow-full {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+}
+
+.moon-name-full {
+    font-size: 12px;
+    font-weight: 600;
 }
 
 /* ========================================

@@ -10,6 +10,7 @@ const state = {
     currentType: 'year',
     config: {
         location: 'Asia/Shanghai',
+        language: 'zh',
         goalName: '',
         targetDate: '',
         bgColor: '#000000',
@@ -18,6 +19,77 @@ const state = {
     deviceResolution: { width: 1179, height: 2556 },
     autoDetectDevice: true,
     customTheme: false
+};
+
+const SUPPORTED_WALLPAPER_TYPES = new Set([
+    'year',
+    'goal',
+    'month',
+    'week',
+    'minimal',
+    'gradient',
+    'cyberpunk',
+    'nature',
+    'retro',
+    'glass',
+    'digital',
+    'quote',
+    'stats',
+    'season',
+    'binary',
+    'moon'
+]);
+const THEME_STORAGE_KEY = 'lifegrid.theme';
+
+const I18N_TEXT = {
+    zh: {
+        invalidDate: '无效的目标日期',
+        daysRemaining: '剩余天数',
+        defaultGoalName: '我的目标',
+        yearLabel: '本年进度',
+        yearRemainingDays: (days) => `今年还剩 ${days} 天`,
+        monthLabel: '本月进度',
+        weekLabel: '本周进度',
+        quotes: [
+            '时间是最公平的资源。',
+            '把今天过好，就是投资未来。',
+            '进步不必很快，但要持续。',
+            '专注当下，结果自然到来。'
+        ],
+        quoteAuthor: '每日提醒',
+        seasons: [
+            { name: '春季', icon: '🌸' },
+            { name: '夏季', icon: '☀️' },
+            { name: '秋季', icon: '🍂' },
+            { name: '冬季', icon: '❄️' }
+        ],
+        fallbackTemplate: (source, fallback) => `“${source}” 暂未支持，预览使用 ${fallback} 模板`,
+        moonPhases: ['新月', '峨眉月', '上弦月', '盈凸月', '满月', '亏凸月', '下弦月', '残月']
+    },
+    en: {
+        invalidDate: 'Invalid target date',
+        daysRemaining: 'Days Left',
+        defaultGoalName: 'My Goal',
+        yearLabel: 'Year Progress',
+        yearRemainingDays: (days) => `${days} days left this year`,
+        monthLabel: 'Month Progress',
+        weekLabel: 'Week Progress',
+        quotes: [
+            'Time is the fairest resource.',
+            'A good today compounds tomorrow.',
+            'Consistency beats intensity.',
+            'Focus now, outcomes follow.'
+        ],
+        quoteAuthor: 'Daily Reminder',
+        seasons: [
+            { name: 'Spring', icon: '🌸' },
+            { name: 'Summer', icon: '☀️' },
+            { name: 'Autumn', icon: '🍂' },
+            { name: 'Winter', icon: '❄️' }
+        ],
+        fallbackTemplate: (source, fallback) => `"${source}" is not ready. Showing ${fallback}.`,
+        moonPhases: ['New Moon', 'Waxing Crescent', 'First Quarter', 'Waxing Gibbous', 'Full Moon', 'Waning Gibbous', 'Last Quarter', 'Waning Crescent']
+    }
 };
 
 // ========================================
@@ -30,6 +102,7 @@ const elements = {
 
     // Form elements
     locationSelect: document.getElementById('locationSelect'),
+    languageSelect: document.getElementById('languageSelect'),
     goalName: document.getElementById('goalName'),
     targetDate: document.getElementById('targetDate'),
     bgColor: document.getElementById('bgColor'),
@@ -44,6 +117,7 @@ const elements = {
     targetDateRow: document.getElementById('targetDateRow'),
 
     // Preview elements
+    previewDevice: document.querySelector('.preview-device'),
     previewScreen: document.getElementById('previewScreen'),
     deviceResolution: document.getElementById('deviceResolution'),
     devicePixelRatio: document.getElementById('devicePixelRatio'),
@@ -85,18 +159,32 @@ const elements = {
     themeToggle: document.getElementById('themeToggle')
 };
 
+const AVAILABLE_STYLE_TYPES = new Set(
+    Array.from(elements.styleCards)
+        .map(card => card.dataset.type)
+        .filter(Boolean)
+);
+
 // ========================================
 // Initialization
 // ========================================
 function init() {
+    applySavedTheme();
+
     // Set default target date (7 days from now)
     const today = new Date();
     const defaultTargetDate = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 7);
     elements.targetDate.value = formatDate(defaultTargetDate);
     state.config.targetDate = elements.targetDate.value;
+    state.autoDetectDevice = elements.autoDetectDevice.checked;
+    state.config.language = elements.languageSelect.value;
+
+    updateColorInputs();
+    updateFormVisibility();
 
     // Detect device resolution
     detectDeviceResolution();
+    syncDeviceInputState();
 
     // Initialize preview grids
     initYearGrid();
@@ -128,7 +216,10 @@ function bindEvents() {
         btn.addEventListener('click', (e) => {
             e.stopPropagation();
             selectStyle(btn.dataset.type);
-            document.getElementById('customize').scrollIntoView({ behavior: 'smooth' });
+            const customizeSection = document.getElementById('customize');
+            if (customizeSection) {
+                customizeSection.scrollIntoView({ behavior: 'smooth' });
+            }
         });
     });
 
@@ -139,12 +230,14 @@ function bindEvents() {
         renderPreview();
     });
 
-    elements.birthDate.addEventListener('change', (e) => {
-        state.config.birthDate = e.target.value;
-        updateLifePreview();
+    elements.languageSelect.addEventListener('change', (e) => {
+        state.config.language = e.target.value;
+        updateGoalPreview();
         generateURL();
         renderPreview();
     });
+
+    // birthDate element removed - life calendar not implemented in this version
 
     elements.goalName.addEventListener('input', (e) => {
         state.config.goalName = e.target.value;
@@ -174,16 +267,15 @@ function bindEvents() {
                 // Show custom color pickers
                 state.customTheme = true;
                 elements.customColors.style.display = 'flex';
+                generateURL();
+                renderPreview();
             } else {
                 // Apply preset
                 state.customTheme = false;
                 state.config.bgColor = bg;
                 state.config.accentColor = accent;
                 elements.customColors.style.display = 'none';
-                elements.bgColor.value = bg;
-                elements.accentColor.value = accent;
-                elements.bgColorValue.textContent = bg.toUpperCase();
-                elements.accentColorValue.textContent = accent.toUpperCase();
+                updateColorInputs();
                 generateURL();
                 renderPreview();
             }
@@ -218,6 +310,8 @@ function bindEvents() {
             generateURL();
             renderPreview();
         }
+
+        syncDeviceInputState();
     });
 
     elements.customWidth.addEventListener('input', updateDeviceResolutionFromCustom);
@@ -229,10 +323,9 @@ function bindEvents() {
             detectDeviceResolution();
             // Reset select to match detected device if possible
             matchDeviceSelectToResolution();
-        } else {
-            // Enable manual selection
-            elements.deviceSelect.disabled = false;
         }
+
+        syncDeviceInputState();
     });
 
     // URL copy
@@ -264,7 +357,11 @@ function bindEvents() {
             elements.tabBtns.forEach(b => b.classList.remove('active'));
             elements.tabContents.forEach(c => c.classList.remove('active'));
             btn.classList.add('active');
-            document.getElementById(tab + 'Tab').classList.add('active');
+
+            const activeTab = document.getElementById(tab + 'Tab');
+            if (activeTab) {
+                activeTab.classList.add('active');
+            }
         });
     });
 
@@ -276,6 +373,11 @@ function bindEvents() {
 // Style Selection
 // ========================================
 function selectStyle(type) {
+    if (!type || !AVAILABLE_STYLE_TYPES.has(type)) {
+        console.warn('Unknown style type:', type);
+        return;
+    }
+
     state.currentType = type;
 
     // Update cards
@@ -306,8 +408,10 @@ function initYearGrid() {
     const grid = elements.yearGridPreview;
     grid.innerHTML = '';
 
-    // Create 52 cells (4 rows x 13 columns for weeks)
-    for (let i = 0; i < 52; i++) {
+    const progress = getYearProgressData();
+    const totalCells = progress.totalDays;
+
+    for (let i = 0; i < totalCells; i++) {
         const cell = document.createElement('div');
         cell.className = 'year-cell';
         grid.appendChild(cell);
@@ -320,15 +424,11 @@ function initYearGrid() {
 // Preview Updates
 // ========================================
 function updateYearPreview() {
-    const now = new Date();
-    const startOfYear = new Date(now.getFullYear(), 0, 1);
-    const endOfYear = new Date(now.getFullYear() + 1, 0, 1);
-    const totalDays = (endOfYear - startOfYear) / (1000 * 60 * 60 * 24);
-    const daysPassed = (now - startOfYear) / (1000 * 60 * 60 * 24);
-    const percent = Math.min(100, Math.max(0, (daysPassed / totalDays) * 100));
+    const progress = getYearProgressData();
+    const percent = progress.percent;
 
     const cells = elements.yearGridPreview.querySelectorAll('.year-cell');
-    const filledCount = Math.floor((percent / 100) * cells.length);
+    const filledCount = progress.daysPassed;
 
     cells.forEach((cell, index) => {
         cell.classList.toggle('filled', index < filledCount);
@@ -355,7 +455,7 @@ function updateGoalPreview() {
     elements.goalProgressCircle.style.strokeDasharray = circumference;
     elements.goalProgressCircle.style.strokeDashoffset = offset;
     elements.goalDays.textContent = Math.max(0, daysRemaining);
-    elements.goalNamePreview.textContent = state.config.goalName || '目标';
+    elements.goalNamePreview.textContent = state.config.goalName || getText('defaultGoalName');
 }
 
 // ========================================
@@ -367,23 +467,74 @@ function renderPreview() {
     screen.style.backgroundColor = state.config.bgColor;
     screen.style.color = state.config.accentColor;
 
-    switch (state.currentType) {
+    const renderType = resolveRenderableType(state.currentType);
+
+    switch (renderType) {
         case 'year':
             renderYearPreview(screen);
             break;
         case 'goal':
             renderGoalPreview(screen);
             break;
+        case 'month':
+            renderMonthPreview(screen);
+            break;
+        case 'week':
+            renderWeekPreview(screen);
+            break;
+        case 'minimal':
+            renderMinimalPreview(screen);
+            break;
+        case 'gradient':
+            renderGradientPreview(screen);
+            break;
+        case 'cyberpunk':
+            renderCyberpunkPreview(screen);
+            break;
+        case 'nature':
+            renderNaturePreview(screen);
+            break;
+        case 'retro':
+            renderRetroPreview(screen);
+            break;
+        case 'glass':
+            renderGlassPreview(screen);
+            break;
+        case 'digital':
+            renderDigitalPreview(screen);
+            break;
+        case 'quote':
+            renderQuotePreview(screen);
+            break;
+        case 'stats':
+            renderStatsPreview(screen);
+            break;
+        case 'season':
+            renderSeasonPreview(screen);
+            break;
+        case 'binary':
+            renderBinaryPreview(screen);
+            break;
+        case 'moon':
+            renderMoonPreview(screen);
+            break;
+    }
+
+    if (renderType !== state.currentType) {
+        renderFallbackHint(screen, state.currentType, renderType);
     }
 }
 
+function renderFallbackHint(container, sourceType, fallbackType) {
+    const hint = document.createElement('div');
+    hint.className = 'preview-fallback-hint';
+    hint.textContent = getText('fallbackTemplate', sourceType, fallbackType);
+    container.appendChild(hint);
+}
+
 function renderYearPreview(container) {
-    const now = new Date();
-    const startOfYear = new Date(now.getFullYear(), 0, 1);
-    const endOfYear = new Date(now.getFullYear() + 1, 0, 1);
-    const totalDays = (endOfYear - startOfYear) / (1000 * 60 * 60 * 24);
-    const daysPassed = (now - startOfYear) / (1000 * 60 * 60 * 24);
-    const percent = Math.min(100, Math.max(0, (daysPassed / totalDays) * 100));
+    const progress = getYearProgressData();
+    const percent = progress.percent;
 
     const wrapper = document.createElement('div');
     wrapper.className = 'preview-year-full';
@@ -391,10 +542,11 @@ function renderYearPreview(container) {
 
     const grid = document.createElement('div');
     grid.className = 'year-grid-full';
+    const columns = 20;
+    grid.style.gridTemplateColumns = `repeat(${columns}, 1fr)`;
 
-    // 10 rows x 13 columns = 130 cells (approximate weeks)
-    const totalCells = 130;
-    const filledCount = Math.floor((percent / 100) * totalCells);
+    const totalCells = progress.totalDays;
+    const filledCount = progress.daysPassed;
 
     for (let i = 0; i < totalCells; i++) {
         const cell = document.createElement('div');
@@ -408,27 +560,7 @@ function renderYearPreview(container) {
     info.className = 'year-info';
     info.innerHTML = `
         <span class="year-percent" style="color: ${state.config.accentColor}">${Math.floor(percent)}%</span>
-        <span class="year-label" style="color: ${state.config.accentColor}; opacity: 0.6">${now.getFullYear()}</span>
-    `;
-
-    wrapper.appendChild(grid);
-    wrapper.appendChild(info);
-    container.appendChild(wrapper);
-}
-
-function renderGoalPreview(container) {
-            cell.style.opacity = '0.2';
-        }
-
-        grid.appendChild(cell);
-    }
-
-    const info = document.createElement('div');
-    info.className = 'life-info';
-    info.innerHTML = `
-        <div class="life-text" style="color: ${state.config.accentColor}; opacity: 0.6">
-            ${weeksLived.toLocaleString()} / ${lifespanWeeks.toLocaleString()} 周
-        </div>
+        <span class="year-label" style="color: ${state.config.accentColor}; opacity: 0.6">${getText('yearRemainingDays', progress.daysRemaining)}</span>
     `;
 
     wrapper.appendChild(grid);
@@ -472,12 +604,12 @@ function renderGoalPreview(container) {
     label.className = 'goal-label-full';
     label.style.color = state.config.accentColor;
     label.style.opacity = '0.6';
-    label.textContent = '剩余天数';
+    label.textContent = getText('daysRemaining');
 
     const name = document.createElement('div');
     name.className = 'goal-name-full';
     name.style.color = state.config.accentColor;
-    name.textContent = state.config.goalName || '目标';
+    name.textContent = state.config.goalName || getText('defaultGoalName');
 
     wrapper.appendChild(circleWrapper);
     wrapper.appendChild(label);
@@ -489,13 +621,18 @@ function renderGoalPreview(container) {
 // URL Generation
 // ========================================
 function generateURL() {
+    const renderType = resolveRenderableType(state.currentType);
+
     const params = new URLSearchParams({
-        type: state.currentType,
+        type: renderType,
         bg: state.config.bgColor,
-        accent: state.config.accentColor
+        accent: state.config.accentColor,
+        lang: state.config.language,
+        w: String(state.deviceResolution.width),
+        h: String(state.deviceResolution.height)
     });
 
-    if (state.currentType === 'goal') {
+    if (renderType === 'goal') {
         params.set('target', state.config.targetDate);
         if (state.config.goalName) {
             params.set('name', state.config.goalName);
@@ -551,42 +688,83 @@ function downloadWallpaper() {
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     // Render based on type
-    switch (state.currentType) {
+    const renderType = resolveRenderableType(state.currentType);
+
+    switch (renderType) {
         case 'year':
             drawYearWallpaper(ctx, canvas.width, canvas.height);
             break;
         case 'goal':
             drawGoalWallpaper(ctx, canvas.width, canvas.height);
             break;
+        case 'month':
+            drawMonthWallpaper(ctx, canvas.width, canvas.height);
+            break;
+        case 'week':
+            drawWeekWallpaper(ctx, canvas.width, canvas.height);
+            break;
+        case 'minimal':
+            drawMinimalWallpaper(ctx, canvas.width, canvas.height);
+            break;
+        case 'gradient':
+            drawGradientWallpaper(ctx, canvas.width, canvas.height);
+            break;
+        case 'cyberpunk':
+            drawCyberpunkWallpaper(ctx, canvas.width, canvas.height);
+            break;
+        case 'nature':
+            drawNatureWallpaper(ctx, canvas.width, canvas.height);
+            break;
+        case 'retro':
+            drawRetroWallpaper(ctx, canvas.width, canvas.height);
+            break;
+        case 'glass':
+            drawGlassWallpaper(ctx, canvas.width, canvas.height);
+            break;
+        case 'digital':
+            drawDigitalWallpaper(ctx, canvas.width, canvas.height);
+            break;
+        case 'quote':
+            drawQuoteWallpaper(ctx, canvas.width, canvas.height);
+            break;
+        case 'stats':
+            drawStatsWallpaper(ctx, canvas.width, canvas.height);
+            break;
+        case 'season':
+            drawSeasonWallpaper(ctx, canvas.width, canvas.height);
+            break;
+        case 'binary':
+            drawBinaryWallpaper(ctx, canvas.width, canvas.height);
+            break;
+        case 'moon':
+            drawMoonWallpaper(ctx, canvas.width, canvas.height);
+            break;
+        default:
+            drawYearWallpaper(ctx, canvas.width, canvas.height);
+            break;
     }
 
     // Download
     const link = document.createElement('a');
-    link.download = `lifegrid-${state.currentType}-${Date.now()}.png`;
+    link.download = `lifegrid-${renderType}-${Date.now()}.png`;
     link.href = canvas.toDataURL('image/png');
     link.click();
 }
 
 function drawYearWallpaper(ctx, width, height) {
-    const now = new Date();
-    const startOfYear = new Date(now.getFullYear(), 0, 1);
-    const endOfYear = new Date(now.getFullYear() + 1, 0, 1);
-    const totalDays = (endOfYear - startOfYear) / (1000 * 60 * 60 * 24);
-    const daysPassed = (now - startOfYear) / (1000 * 60 * 60 * 24);
-    const percent = Math.min(100, Math.max(0, (daysPassed / totalDays) * 100));
-
-    // Grid settings - improved spacing
-    const cols = 13;
-    const rows = 10;
-    const cellSize = Math.min(width, height) / 28;
-    const gap = cellSize * 0.25;
+    const progress = getYearProgressData();
+    const percent = progress.percent;
+    const cols = 20;
+    const rows = Math.ceil(progress.totalDays / cols);
+    const cellSize = Math.min(width / (cols + 8), height / (rows + 16));
+    const gap = Math.max(1, cellSize * 0.35);
     const gridWidth = cols * cellSize + (cols - 1) * gap;
     const gridHeight = rows * cellSize + (rows - 1) * gap;
     const startX = (width - gridWidth) / 2;
-    const startY = (height - gridHeight) / 2 - height * 0.05;
+    const startY = (height - gridHeight) / 2 - height * 0.08;
 
-    const totalCells = cols * rows;
-    const filledCount = Math.floor((percent / 100) * totalCells);
+    const totalCells = progress.totalDays;
+    const filledCount = progress.daysPassed;
 
     // Draw cells
     for (let i = 0; i < totalCells; i++) {
@@ -598,7 +776,8 @@ function drawYearWallpaper(ctx, width, height) {
         ctx.fillStyle = state.config.accentColor;
         ctx.globalAlpha = i < filledCount ? 1 : 0.2;
 
-        roundRect(ctx, x, y, cellSize, cellSize, cellSize * 0.2);
+        ctx.beginPath();
+        ctx.arc(x + cellSize / 2, y + cellSize / 2, cellSize / 2, 0, Math.PI * 2);
         ctx.fill();
     }
 
@@ -612,34 +791,10 @@ function drawYearWallpaper(ctx, width, height) {
     ctx.textBaseline = 'middle';
     ctx.fillText(`${Math.floor(percent)}%`, width / 2, textY);
 
-    // Draw year
-    ctx.font = `500 ${Math.min(width, height) / 22}px Inter, sans-serif`;
+    // Draw days remaining in year
+    ctx.font = `500 ${Math.min(width, height) / 24}px Inter, sans-serif`;
     ctx.globalAlpha = 0.6;
-    ctx.fillText(String(now.getFullYear()), width / 2, textY + height * 0.08);
-}
-
-function drawGoalWallpaper(ctx, width, height) {
-            ctx.shadowBlur = cellSize;
-        } else {
-            ctx.globalAlpha = 0.2;
-            ctx.shadowBlur = 0;
-        }
-
-        ctx.beginPath();
-        ctx.arc(x + cellSize / 2, y + cellSize / 2, cellSize / 2, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.shadowBlur = 0;
-    }
-
-    ctx.globalAlpha = 1;
-
-    // Draw stats
-    ctx.fillStyle = state.config.accentColor;
-    ctx.font = `500 ${Math.min(width, height) / 30}px Inter, sans-serif`;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.globalAlpha = 0.6;
-    ctx.fillText(`${weeksLived.toLocaleString()} / ${lifespanWeeks.toLocaleString()} 周`, width / 2, height - 100);
+    ctx.fillText(getText('yearRemainingDays', progress.daysRemaining), width / 2, textY + height * 0.08);
 }
 
 function drawGoalWallpaper(ctx, width, height) {
@@ -655,7 +810,7 @@ function drawGoalWallpaper(ctx, width, height) {
         ctx.font = `bold ${Math.min(width, height) / 15}px sans-serif`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillText('无效的目标日期', width / 2, height / 2);
+        ctx.fillText(getText('invalidDate'), width / 2, height / 2);
         return;
     }
 
@@ -697,12 +852,776 @@ function drawGoalWallpaper(ctx, width, height) {
     // Draw label - below the number with proper spacing
     ctx.font = `500 ${radius * 0.18}px Inter, sans-serif`;
     ctx.globalAlpha = 0.7;
-    ctx.fillText('剩余天数', centerX, centerY + radius * 0.5);
+    ctx.fillText(getText('daysRemaining'), centerX, centerY + radius * 0.5);
 
     // Draw goal name - at the bottom with more spacing
     ctx.font = `600 ${Math.min(width * 0.06, 60)}px Inter, sans-serif`;
     ctx.globalAlpha = 1;
-    ctx.fillText(state.config.goalName || '我的目标', centerX, height * 0.78);
+    ctx.fillText(state.config.goalName || getText('defaultGoalName'), centerX, height * 0.78);
+}
+
+function renderMonthPreview(container) {
+    const progress = getMonthProgressData();
+
+    const wrapper = document.createElement('div');
+    wrapper.className = 'preview-simple-full';
+
+    const bar = document.createElement('div');
+    bar.className = 'simple-progress-track';
+    const fill = document.createElement('div');
+    fill.className = 'simple-progress-fill';
+    fill.style.width = `${Math.floor(progress.percent)}%`;
+    fill.style.backgroundColor = state.config.accentColor;
+    bar.appendChild(fill);
+
+    const value = document.createElement('div');
+    value.className = 'simple-value';
+    value.style.color = state.config.accentColor;
+    value.textContent = `${Math.floor(progress.percent)}%`;
+
+    const label = document.createElement('div');
+    label.className = 'simple-label';
+    label.style.color = state.config.accentColor;
+    label.style.opacity = '0.7';
+    label.textContent = getText('monthLabel');
+
+    wrapper.appendChild(bar);
+    wrapper.appendChild(value);
+    wrapper.appendChild(label);
+    container.appendChild(wrapper);
+}
+
+function renderWeekPreview(container) {
+    const progress = getWeekProgressData();
+
+    const wrapper = document.createElement('div');
+    wrapper.className = 'preview-simple-full';
+
+    const dots = document.createElement('div');
+    dots.className = 'week-dots-full';
+    const filled = Math.round(progress.percent / (100 / 7));
+
+    for (let index = 0; index < 7; index++) {
+        const dot = document.createElement('span');
+        dot.className = 'week-dot-full';
+        dot.style.backgroundColor = state.config.accentColor;
+        dot.style.opacity = index < filled ? '1' : '0.2';
+        dots.appendChild(dot);
+    }
+
+    const value = document.createElement('div');
+    value.className = 'simple-value';
+    value.style.color = state.config.accentColor;
+    value.textContent = `${Math.floor(progress.percent)}%`;
+
+    const label = document.createElement('div');
+    label.className = 'simple-label';
+    label.style.color = state.config.accentColor;
+    label.style.opacity = '0.7';
+    label.textContent = getText('weekLabel');
+
+    wrapper.appendChild(dots);
+    wrapper.appendChild(value);
+    wrapper.appendChild(label);
+    container.appendChild(wrapper);
+}
+
+function renderMinimalPreview(container) {
+    const progress = getYearProgressData();
+
+    const wrapper = document.createElement('div');
+    wrapper.className = 'preview-simple-full';
+
+    const line = document.createElement('div');
+    line.className = 'simple-line-track';
+    const lineFill = document.createElement('div');
+    lineFill.className = 'simple-line-fill';
+    lineFill.style.width = `${Math.floor(progress.percent)}%`;
+    lineFill.style.backgroundColor = state.config.accentColor;
+    line.appendChild(lineFill);
+
+    const value = document.createElement('div');
+    value.className = 'simple-value';
+    value.style.color = state.config.accentColor;
+    value.textContent = `${Math.floor(progress.percent)}%`;
+
+    wrapper.appendChild(line);
+    wrapper.appendChild(value);
+    container.appendChild(wrapper);
+}
+
+function renderGradientPreview(container) {
+    const progress = getYearProgressData();
+
+    const wrapper = document.createElement('div');
+    wrapper.className = 'preview-gradient-full';
+    wrapper.style.background = `linear-gradient(135deg, ${state.config.accentColor}55 0%, ${state.config.bgColor} 100%)`;
+
+    const value = document.createElement('div');
+    value.className = 'simple-value';
+    value.style.color = state.config.accentColor;
+    value.textContent = `${Math.floor(progress.percent)}%`;
+
+    wrapper.appendChild(value);
+    container.appendChild(wrapper);
+}
+
+function renderCyberpunkPreview(container) {
+    const progress = getYearProgressData();
+
+    const wrapper = document.createElement('div');
+    wrapper.className = 'preview-cyberpunk-full';
+
+    const grid = document.createElement('div');
+    grid.className = 'cyber-grid-full';
+    const cells = 49;
+    const activeCount = Math.floor((progress.percent / 100) * cells);
+
+    for (let index = 0; index < cells; index++) {
+        const cell = document.createElement('div');
+        cell.className = 'cyber-cell-full';
+        cell.style.backgroundColor = state.config.accentColor;
+        cell.style.opacity = index < activeCount ? '0.95' : '0.15';
+        grid.appendChild(cell);
+    }
+
+    const value = document.createElement('div');
+    value.className = 'simple-value';
+    value.style.color = state.config.accentColor;
+    value.textContent = `${Math.floor(progress.percent)}%`;
+
+    wrapper.appendChild(grid);
+    wrapper.appendChild(value);
+    container.appendChild(wrapper);
+}
+
+function renderNaturePreview(container) {
+    const progress = getYearProgressData();
+
+    const wrapper = document.createElement('div');
+    wrapper.className = 'preview-gradient-full';
+    wrapper.style.background = `linear-gradient(to bottom, ${state.config.accentColor}66 0%, ${state.config.bgColor} 100%)`;
+
+    const value = document.createElement('div');
+    value.className = 'simple-value';
+    value.style.color = state.config.accentColor;
+    value.textContent = `${Math.floor(progress.percent)}%`;
+
+    wrapper.appendChild(value);
+    container.appendChild(wrapper);
+}
+
+function renderRetroPreview(container) {
+    const progress = getYearProgressData();
+
+    const wrapper = document.createElement('div');
+    wrapper.className = 'preview-simple-full';
+
+    const text = document.createElement('div');
+    text.className = 'retro-text-full';
+    text.style.color = state.config.accentColor;
+    text.textContent = `YEAR ${Math.floor(progress.percent)}%`;
+
+    wrapper.appendChild(text);
+    container.appendChild(wrapper);
+}
+
+function renderGlassPreview(container) {
+    const progress = getYearProgressData();
+
+    const wrapper = document.createElement('div');
+    wrapper.className = 'preview-simple-full';
+
+    const card = document.createElement('div');
+    card.className = 'glass-card-full';
+
+    const value = document.createElement('div');
+    value.className = 'simple-value';
+    value.style.color = state.config.accentColor;
+    value.textContent = `${Math.floor(progress.percent)}%`;
+
+    card.appendChild(value);
+    wrapper.appendChild(card);
+    container.appendChild(wrapper);
+}
+
+function renderDigitalPreview(container) {
+    const now = new Date();
+    const progress = getYearProgressData();
+
+    const wrapper = document.createElement('div');
+    wrapper.className = 'preview-simple-full';
+
+    const time = document.createElement('div');
+    time.className = 'digital-time-full';
+    time.style.color = state.config.accentColor;
+    time.textContent = now.toLocaleTimeString(state.config.language === 'en' ? 'en-US' : 'zh-CN', {
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false
+    });
+
+    const value = document.createElement('div');
+    value.className = 'simple-label';
+    value.style.color = state.config.accentColor;
+    value.style.opacity = '0.7';
+    value.textContent = `${getText('yearLabel')} ${Math.floor(progress.percent)}%`;
+
+    wrapper.appendChild(time);
+    wrapper.appendChild(value);
+    container.appendChild(wrapper);
+}
+
+function renderQuotePreview(container) {
+    const quotes = getText('quotes');
+    const quote = quotes[new Date().getDate() % quotes.length];
+
+    const wrapper = document.createElement('div');
+    wrapper.className = 'preview-simple-full';
+
+    const text = document.createElement('div');
+    text.className = 'quote-text-full';
+    text.style.color = state.config.accentColor;
+    text.textContent = `“${quote}”`;
+
+    const author = document.createElement('div');
+    author.className = 'simple-label';
+    author.style.color = state.config.accentColor;
+    author.style.opacity = '0.7';
+    author.textContent = `— ${getText('quoteAuthor')}`;
+
+    wrapper.appendChild(text);
+    wrapper.appendChild(author);
+    container.appendChild(wrapper);
+}
+
+function renderStatsPreview(container) {
+    const yearProgress = getYearProgressData();
+    const monthProgress = getMonthProgressData();
+    const weekProgress = getWeekProgressData();
+
+    const wrapper = document.createElement('div');
+    wrapper.className = 'preview-simple-full';
+
+    const stats = [
+        { label: getText('yearLabel'), value: yearProgress.percent },
+        { label: getText('monthLabel'), value: monthProgress.percent },
+        { label: getText('weekLabel'), value: weekProgress.percent }
+    ];
+
+    stats.forEach(stat => {
+        const row = document.createElement('div');
+        row.className = 'stat-row-full';
+
+        const label = document.createElement('span');
+        label.className = 'stat-label-full';
+        label.style.color = state.config.accentColor;
+        label.style.opacity = '0.7';
+        label.textContent = stat.label;
+
+        const value = document.createElement('span');
+        value.className = 'stat-value-full';
+        value.style.color = state.config.accentColor;
+        value.textContent = `${Math.floor(stat.value)}%`;
+
+        row.appendChild(label);
+        row.appendChild(value);
+        wrapper.appendChild(row);
+    });
+
+    container.appendChild(wrapper);
+}
+
+function renderSeasonPreview(container) {
+    const season = getSeasonInfo(new Date());
+    const yearProgress = getYearProgressData();
+
+    const wrapper = document.createElement('div');
+    wrapper.className = 'preview-simple-full';
+
+    const icon = document.createElement('div');
+    icon.className = 'season-icon-full';
+    icon.textContent = season.icon;
+
+    const label = document.createElement('div');
+    label.className = 'simple-label';
+    label.style.color = state.config.accentColor;
+    label.textContent = season.name;
+
+    const value = document.createElement('div');
+    value.className = 'simple-value';
+    value.style.color = state.config.accentColor;
+    value.textContent = `${Math.floor(yearProgress.percent)}%`;
+
+    wrapper.appendChild(icon);
+    wrapper.appendChild(label);
+    wrapper.appendChild(value);
+    container.appendChild(wrapper);
+}
+
+function renderBinaryPreview(container) {
+    const now = new Date();
+    const dayOfYear = getDayOfYear(now);
+    const yearDays = isLeapYear(now.getFullYear()) ? 366 : 365;
+    const percent = Math.min(100, Math.max(0, (dayOfYear / yearDays) * 100));
+
+    const wrapper = document.createElement('div');
+    wrapper.className = 'preview-binary-full';
+
+    const binary = Math.floor(percent).toString(2).padStart(8, '0');
+    const binaryText = document.createElement('div');
+    binaryText.className = 'binary-code-full';
+    binaryText.style.color = state.config.accentColor;
+    binaryText.style.opacity = '0.7';
+    binaryText.textContent = binary;
+
+    const percentText = document.createElement('div');
+    percentText.className = 'binary-percent-full';
+    percentText.style.color = state.config.accentColor;
+    percentText.textContent = `${Math.floor(percent)}%`;
+
+    wrapper.appendChild(binaryText);
+    wrapper.appendChild(percentText);
+    container.appendChild(wrapper);
+}
+
+function renderMoonPreview(container) {
+    const now = new Date();
+    const moonInfo = getMoonPhaseInfo(now);
+
+    const wrapper = document.createElement('div');
+    wrapper.className = 'preview-moon-full';
+
+    const moon = document.createElement('div');
+    moon.className = 'moon-phase-full';
+    moon.style.backgroundColor = state.config.accentColor;
+
+    const shadow = document.createElement('div');
+    shadow.className = 'moon-shadow-full';
+    shadow.style.backgroundColor = state.config.bgColor;
+
+    if (moonInfo.illumination >= 0.5) {
+        shadow.style.width = `${Math.max(0, (1 - moonInfo.illumination) * 200)}%`;
+        shadow.style.left = `${Math.max(0, moonInfo.waxing ? 50 : 0)}%`;
+    } else {
+        shadow.style.width = `${Math.max(0, moonInfo.illumination * 200)}%`;
+        shadow.style.left = `${Math.max(0, moonInfo.waxing ? 0 : 50)}%`;
+    }
+
+    const moonName = document.createElement('div');
+    moonName.className = 'moon-name-full';
+    moonName.style.color = state.config.accentColor;
+    moonName.style.opacity = '0.8';
+    moonName.textContent = moonInfo.name;
+
+    moon.appendChild(shadow);
+    wrapper.appendChild(moon);
+    wrapper.appendChild(moonName);
+    container.appendChild(wrapper);
+}
+
+function drawBinaryWallpaper(ctx, width, height) {
+    const now = new Date();
+    const dayOfYear = getDayOfYear(now);
+    const yearDays = isLeapYear(now.getFullYear()) ? 366 : 365;
+    const percent = Math.min(100, Math.max(0, (dayOfYear / yearDays) * 100));
+    const binary = Math.floor(percent).toString(2).padStart(8, '0');
+
+    ctx.fillStyle = state.config.bgColor;
+    ctx.fillRect(0, 0, width, height);
+
+    ctx.fillStyle = state.config.accentColor;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+
+    ctx.font = `500 ${Math.min(width, height) / 14}px Menlo, Monaco, monospace`;
+    ctx.globalAlpha = 0.7;
+    ctx.fillText(binary, width / 2, height * 0.45);
+
+    ctx.font = `bold ${Math.min(width, height) / 8}px Inter, sans-serif`;
+    ctx.globalAlpha = 1;
+    ctx.fillText(`${Math.floor(percent)}%`, width / 2, height * 0.58);
+}
+
+function drawMoonWallpaper(ctx, width, height) {
+    const moonInfo = getMoonPhaseInfo(new Date());
+
+    ctx.fillStyle = state.config.bgColor;
+    ctx.fillRect(0, 0, width, height);
+
+    const centerX = width / 2;
+    const centerY = height * 0.45;
+    const radius = Math.min(width, height) * 0.18;
+
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+    ctx.fillStyle = state.config.accentColor;
+    ctx.fill();
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+    ctx.clip();
+
+    const shadowWidth = moonInfo.illumination >= 0.5
+        ? (1 - moonInfo.illumination) * 2 * radius
+        : moonInfo.illumination * 2 * radius;
+    const shadowX = moonInfo.illumination >= 0.5
+        ? (moonInfo.waxing ? centerX : centerX - shadowWidth)
+        : (moonInfo.waxing ? centerX - shadowWidth : centerX);
+
+    ctx.fillStyle = state.config.bgColor;
+    ctx.fillRect(shadowX, centerY - radius, Math.max(0, shadowWidth), radius * 2);
+    ctx.restore();
+
+    ctx.fillStyle = state.config.accentColor;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.font = `600 ${Math.min(width, height) / 18}px Inter, sans-serif`;
+    ctx.globalAlpha = 0.85;
+    ctx.fillText(moonInfo.name, width / 2, height * 0.75);
+    ctx.globalAlpha = 1;
+}
+
+function drawMonthWallpaper(ctx, width, height) {
+    const progress = getMonthProgressData();
+    drawLinearProgressWallpaper(ctx, width, height, progress.percent, getText('monthLabel'));
+}
+
+function drawWeekWallpaper(ctx, width, height) {
+    const progress = getWeekProgressData();
+    drawLinearProgressWallpaper(ctx, width, height, progress.percent, getText('weekLabel'));
+}
+
+function drawMinimalWallpaper(ctx, width, height) {
+    const progress = getYearProgressData();
+    drawLinearProgressWallpaper(ctx, width, height, progress.percent, getText('yearLabel'));
+}
+
+function drawGradientWallpaper(ctx, width, height) {
+    const progress = getYearProgressData();
+
+    const gradient = ctx.createLinearGradient(0, 0, width, height);
+    gradient.addColorStop(0, `${state.config.accentColor}88`);
+    gradient.addColorStop(1, state.config.bgColor);
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, width, height);
+
+    drawCenteredPercent(ctx, width, height, progress.percent, getText('yearLabel'));
+}
+
+function drawCyberpunkWallpaper(ctx, width, height) {
+    const progress = getYearProgressData();
+
+    ctx.fillStyle = state.config.bgColor;
+    ctx.fillRect(0, 0, width, height);
+
+    const cols = 16;
+    const rows = 24;
+    const cellSize = Math.min(width / (cols + 6), height / (rows + 10));
+    const gap = cellSize * 0.35;
+    const startX = (width - (cols * cellSize + (cols - 1) * gap)) / 2;
+    const startY = height * 0.16;
+    const totalCells = cols * rows;
+    const activeCount = Math.floor((progress.percent / 100) * totalCells);
+
+    for (let index = 0; index < totalCells; index++) {
+        const row = Math.floor(index / cols);
+        const col = index % cols;
+        const x = startX + col * (cellSize + gap);
+        const y = startY + row * (cellSize + gap);
+
+        ctx.fillStyle = state.config.accentColor;
+        ctx.globalAlpha = index < activeCount ? 0.95 : 0.12;
+        ctx.fillRect(x, y, cellSize, cellSize);
+    }
+
+    ctx.globalAlpha = 1;
+    drawCenteredPercent(ctx, width, height, progress.percent, getText('yearLabel'));
+}
+
+function drawNatureWallpaper(ctx, width, height) {
+    const progress = getYearProgressData();
+
+    const gradient = ctx.createLinearGradient(0, 0, 0, height);
+    gradient.addColorStop(0, `${state.config.accentColor}99`);
+    gradient.addColorStop(1, state.config.bgColor);
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, width, height);
+
+    drawCenteredPercent(ctx, width, height, progress.percent, getText('yearLabel'));
+}
+
+function drawRetroWallpaper(ctx, width, height) {
+    const progress = getYearProgressData();
+
+    ctx.fillStyle = state.config.bgColor;
+    ctx.fillRect(0, 0, width, height);
+
+    ctx.strokeStyle = `${state.config.accentColor}55`;
+    ctx.globalAlpha = 0.3;
+    for (let y = 0; y < height; y += 4) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(width, y);
+        ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+
+    ctx.fillStyle = state.config.accentColor;
+    ctx.font = `700 ${Math.min(width, height) / 9}px Menlo, Monaco, monospace`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(`YEAR ${Math.floor(progress.percent)}%`, width / 2, height / 2);
+}
+
+function drawGlassWallpaper(ctx, width, height) {
+    const progress = getYearProgressData();
+
+    ctx.fillStyle = state.config.bgColor;
+    ctx.fillRect(0, 0, width, height);
+
+    const cardWidth = width * 0.7;
+    const cardHeight = height * 0.24;
+    const cardX = (width - cardWidth) / 2;
+    const cardY = (height - cardHeight) / 2;
+
+    ctx.fillStyle = `${state.config.accentColor}22`;
+    roundRect(ctx, cardX, cardY, cardWidth, cardHeight, Math.min(width, height) * 0.03);
+    ctx.fill();
+
+    drawCenteredPercent(ctx, width, height, progress.percent, getText('yearLabel'));
+}
+
+function drawDigitalWallpaper(ctx, width, height) {
+    const now = new Date();
+    const progress = getYearProgressData();
+
+    ctx.fillStyle = state.config.bgColor;
+    ctx.fillRect(0, 0, width, height);
+
+    ctx.fillStyle = state.config.accentColor;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.font = `700 ${Math.min(width, height) / 8}px Menlo, Monaco, monospace`;
+    const timeText = now.toLocaleTimeString(state.config.language === 'en' ? 'en-US' : 'zh-CN', {
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false
+    });
+    ctx.fillText(timeText, width / 2, height * 0.42);
+
+    ctx.font = `500 ${Math.min(width, height) / 20}px Inter, sans-serif`;
+    ctx.globalAlpha = 0.75;
+    ctx.fillText(`${getText('yearLabel')} ${Math.floor(progress.percent)}%`, width / 2, height * 0.56);
+    ctx.globalAlpha = 1;
+}
+
+function drawQuoteWallpaper(ctx, width, height) {
+    const quotes = getText('quotes');
+    const quote = quotes[new Date().getDate() % quotes.length];
+
+    ctx.fillStyle = state.config.bgColor;
+    ctx.fillRect(0, 0, width, height);
+
+    ctx.fillStyle = state.config.accentColor;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.font = `600 ${Math.min(width, height) / 22}px Inter, sans-serif`;
+    ctx.fillText(`“${quote}”`, width / 2, height * 0.46);
+
+    ctx.globalAlpha = 0.7;
+    ctx.font = `500 ${Math.min(width, height) / 30}px Inter, sans-serif`;
+    ctx.fillText(`— ${getText('quoteAuthor')}`, width / 2, height * 0.58);
+    ctx.globalAlpha = 1;
+}
+
+function drawStatsWallpaper(ctx, width, height) {
+    const year = getYearProgressData().percent;
+    const month = getMonthProgressData().percent;
+    const week = getWeekProgressData().percent;
+
+    ctx.fillStyle = state.config.bgColor;
+    ctx.fillRect(0, 0, width, height);
+
+    const rows = [
+        [getText('yearLabel'), year],
+        [getText('monthLabel'), month],
+        [getText('weekLabel'), week]
+    ];
+
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+
+    const startX = width * 0.18;
+    const startY = height * 0.36;
+    const rowGap = height * 0.12;
+
+    rows.forEach((row, index) => {
+        const y = startY + index * rowGap;
+        ctx.fillStyle = state.config.accentColor;
+        ctx.globalAlpha = 0.7;
+        ctx.font = `500 ${Math.min(width, height) / 28}px Inter, sans-serif`;
+        ctx.fillText(row[0], startX, y);
+
+        ctx.globalAlpha = 1;
+        ctx.font = `700 ${Math.min(width, height) / 18}px Inter, sans-serif`;
+        ctx.fillText(`${Math.floor(row[1])}%`, width * 0.62, y);
+    });
+
+    ctx.globalAlpha = 1;
+}
+
+function drawSeasonWallpaper(ctx, width, height) {
+    const season = getSeasonInfo(new Date());
+    const progress = getYearProgressData();
+
+    ctx.fillStyle = state.config.bgColor;
+    ctx.fillRect(0, 0, width, height);
+
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = state.config.accentColor;
+    ctx.font = `${Math.min(width, height) / 6}px "Apple Color Emoji", "Segoe UI Emoji", sans-serif`;
+    ctx.fillText(season.icon, width / 2, height * 0.35);
+
+    ctx.font = `600 ${Math.min(width, height) / 16}px Inter, sans-serif`;
+    ctx.fillText(season.name, width / 2, height * 0.52);
+
+    ctx.font = `700 ${Math.min(width, height) / 9}px Inter, sans-serif`;
+    ctx.fillText(`${Math.floor(progress.percent)}%`, width / 2, height * 0.67);
+}
+
+function drawLinearProgressWallpaper(ctx, width, height, percent, label) {
+    ctx.fillStyle = state.config.bgColor;
+    ctx.fillRect(0, 0, width, height);
+
+    const trackWidth = width * 0.68;
+    const trackHeight = Math.max(8, Math.min(width, height) * 0.02);
+    const trackX = (width - trackWidth) / 2;
+    const trackY = height * 0.46;
+
+    ctx.fillStyle = `${state.config.accentColor}33`;
+    roundRect(ctx, trackX, trackY, trackWidth, trackHeight, trackHeight / 2);
+    ctx.fill();
+
+    const fillWidth = trackWidth * (Math.max(0, Math.min(100, percent)) / 100);
+    ctx.fillStyle = state.config.accentColor;
+    roundRect(ctx, trackX, trackY, fillWidth, trackHeight, trackHeight / 2);
+    ctx.fill();
+
+    drawCenteredPercent(ctx, width, height, percent, label);
+}
+
+function drawCenteredPercent(ctx, width, height, percent, label) {
+    ctx.fillStyle = state.config.accentColor;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.font = `700 ${Math.min(width, height) / 8}px Inter, sans-serif`;
+    ctx.fillText(`${Math.floor(percent)}%`, width / 2, height * 0.58);
+
+    ctx.globalAlpha = 0.7;
+    ctx.font = `500 ${Math.min(width, height) / 24}px Inter, sans-serif`;
+    ctx.fillText(label, width / 2, height * 0.69);
+    ctx.globalAlpha = 1;
+}
+
+function getYearProgressData(date = new Date()) {
+    const start = new Date(date.getFullYear(), 0, 1);
+    const end = new Date(date.getFullYear() + 1, 0, 1);
+    const totalDays = Math.round((end - start) / (1000 * 60 * 60 * 24));
+    const elapsedDays = Math.floor((date - start) / (1000 * 60 * 60 * 24));
+    const daysPassed = Math.min(totalDays, Math.max(0, elapsedDays + 1));
+    const daysRemaining = Math.max(0, totalDays - daysPassed);
+    const percent = (daysPassed / totalDays) * 100;
+
+    return {
+        percent: Math.min(100, Math.max(0, percent)),
+        totalDays,
+        daysPassed,
+        daysRemaining
+    };
+}
+
+function getMonthProgressData(date = new Date()) {
+    const start = new Date(date.getFullYear(), date.getMonth(), 1);
+    const end = new Date(date.getFullYear(), date.getMonth() + 1, 1);
+    const percent = ((date - start) / (end - start)) * 100;
+
+    return { percent: Math.min(100, Math.max(0, percent)) };
+}
+
+function getWeekProgressData(date = new Date()) {
+    const day = date.getDay();
+    const mondayOffset = (day + 6) % 7;
+
+    const start = new Date(date);
+    start.setHours(0, 0, 0, 0);
+    start.setDate(start.getDate() - mondayOffset);
+
+    const end = new Date(start);
+    end.setDate(end.getDate() + 7);
+
+    const percent = ((date - start) / (end - start)) * 100;
+    return { percent: Math.min(100, Math.max(0, percent)) };
+}
+
+function getSeasonInfo(date = new Date()) {
+    const month = date.getMonth();
+    const seasonIndex = Math.floor(((month + 1) % 12) / 3);
+    const seasons = getText('seasons');
+    return seasons[seasonIndex] || seasons[0];
+}
+
+function getDayOfYear(date) {
+    const yearStart = new Date(date.getFullYear(), 0, 1);
+    return Math.floor((date - yearStart) / (1000 * 60 * 60 * 24)) + 1;
+}
+
+function isLeapYear(year) {
+    return (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0;
+}
+
+function getMoonPhaseInfo(date) {
+    const synodicMonth = 29.53058867;
+    const knownNewMoon = new Date('2000-01-06T18:14:00Z');
+    const daysSince = (date - knownNewMoon) / (1000 * 60 * 60 * 24);
+    const phase = ((daysSince % synodicMonth) + synodicMonth) % synodicMonth;
+    const normalized = phase / synodicMonth;
+
+    const illumination = normalized <= 0.5 ? normalized * 2 : (1 - normalized) * 2;
+    const waxing = normalized <= 0.5;
+    const phaseIndex = Math.floor((normalized * 8) + 0.5) % 8;
+    const phaseNames = getText('moonPhases');
+
+    return {
+        illumination,
+        waxing,
+        name: phaseNames[phaseIndex]
+    };
+}
+
+function getText(key, ...args) {
+    const locale = state.config.language === 'en' ? 'en' : 'zh';
+    const dictionary = I18N_TEXT[locale] || I18N_TEXT.zh;
+    const entry = dictionary[key];
+
+    if (typeof entry === 'function') {
+        return entry(...args);
+    }
+
+    return entry;
+}
+
+function resolveRenderableType(type) {
+    return SUPPORTED_WALLPAPER_TYPES.has(type) ? type : 'year';
+}
+
+function updateColorInputs() {
+    elements.bgColor.value = state.config.bgColor;
+    elements.accentColor.value = state.config.accentColor;
+    elements.bgColorValue.textContent = state.config.bgColor.toUpperCase();
+    elements.accentColorValue.textContent = state.config.accentColor.toUpperCase();
 }
 
 // Helper function for rounded rectangles
@@ -723,6 +1642,12 @@ function roundRect(ctx, x, y, width, height, radius) {
 // ========================================
 // Utilities
 // ========================================
+function getDefaultTargetDate() {
+    const date = new Date();
+    date.setDate(date.getDate() + 7);
+    return formatDate(date);
+}
+
 function formatDate(date) {
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -751,6 +1676,17 @@ function detectDeviceResolution() {
     if (state.autoDetectDevice) {
         matchDeviceSelectToResolution();
     }
+
+    generateURL();
+}
+
+function syncDeviceInputState() {
+    const manualMode = !state.autoDetectDevice;
+    elements.deviceSelect.disabled = !manualMode;
+
+    const customMode = manualMode && elements.deviceSelect.value === 'custom';
+    elements.customWidth.disabled = !customMode;
+    elements.customHeight.disabled = !customMode;
 }
 
 function updateDeviceInfoDisplay() {
@@ -774,6 +1710,24 @@ function updateDeviceInfoDisplay() {
     const aspectH = height / divisor;
     const aspectRatio = (width / height).toFixed(2);
     elements.deviceAspectRatio.textContent = `${aspectW}:${aspectH} (${aspectRatio})`;
+
+    updatePreviewDeviceSize(width, height);
+}
+
+function updatePreviewDeviceSize(width, height) {
+    if (!elements.previewDevice || !width || !height) return;
+
+    const maxPreviewWidth = 340;
+    const maxPreviewHeight = 560;
+    const minPreviewSize = 120;
+
+    const scale = Math.min(maxPreviewWidth / width, maxPreviewHeight / height);
+    const previewWidth = Math.max(minPreviewSize, Math.round(width * scale));
+    const previewHeight = Math.max(minPreviewSize, Math.round(height * scale));
+
+    elements.previewDevice.style.width = `${previewWidth}px`;
+    elements.previewDevice.style.height = `${previewHeight}px`;
+    elements.previewDevice.classList.toggle('landscape', width > height);
 }
 
 function detectDeviceType(width, height, pixelRatio) {
@@ -957,8 +1911,40 @@ function animate() {
 }
 
 function toggleTheme() {
-    // Simple theme toggle - could be expanded
-    document.body.classList.toggle('light-theme');
+    const isLight = document.body.classList.contains('light-theme');
+    const nextTheme = isLight ? 'dark' : 'light';
+    applyTheme(nextTheme);
+
+    try {
+        localStorage.setItem(THEME_STORAGE_KEY, nextTheme);
+    } catch (error) {
+        console.warn('Failed to persist theme:', error);
+    }
+}
+
+function applySavedTheme() {
+    let savedTheme = 'dark';
+
+    try {
+        const storedValue = localStorage.getItem(THEME_STORAGE_KEY);
+        if (storedValue === 'light' || storedValue === 'dark') {
+            savedTheme = storedValue;
+        }
+    } catch (error) {
+        console.warn('Failed to read saved theme:', error);
+    }
+
+    applyTheme(savedTheme);
+}
+
+function applyTheme(theme) {
+    const isLightTheme = theme === 'light';
+    document.body.classList.toggle('light-theme', isLightTheme);
+
+    if (elements.themeToggle) {
+        elements.themeToggle.setAttribute('aria-pressed', String(isLightTheme));
+        elements.themeToggle.setAttribute('title', isLightTheme ? '切换到深色模式' : '切换到浅色模式');
+    }
 }
 
 // ========================================
