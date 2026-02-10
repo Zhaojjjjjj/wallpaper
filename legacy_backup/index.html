@@ -619,7 +619,7 @@
 							复制
 						</button>
 					</div>
-					<p class="url-hint">复制此链接用于自动化设置</p>
+					<p class="url-hint">复制此链接用于自动化设置（链接会直接返回 PNG 图片）</p>
 				</div>
 			</div>
 		</section>
@@ -642,7 +642,7 @@
 							<div class="step-number">1</div>
 							<div class="step-content">
 								<h4>复制壁纸链接</h4>
-								<p>在上方定制区域生成并复制你的专属壁纸 URL</p>
+								<p>在上方定制区域生成并复制你的专属壁纸 URL（该链接直接返回图片）</p>
 							</div>
 						</div>
 						<div class="step">
@@ -658,6 +658,7 @@
 							<div class="step-content">
 								<h4>配置快捷指令</h4>
 								<p>添加动作："获取 URL 内容" → 粘贴你的壁纸链接</p>
+								<p>将“获取 URL 内容”结果直接传给“设定墙纸照片”</p>
 								<p>添加动作："设定墙纸照片" → 选择"锁屏"</p>
 							</div>
 						</div>
@@ -679,7 +680,7 @@
 							<div class="step-number">1</div>
 							<div class="step-content">
 								<h4>复制壁纸链接</h4>
-								<p>在上方定制区域生成并复制你的专属壁纸 URL</p>
+								<p>在上方定制区域生成并复制你的专属壁纸 URL（该链接直接返回图片）</p>
 							</div>
 						</div>
 						<div class="step">
@@ -701,7 +702,7 @@
 							<div class="step-number">4</div>
 							<div class="step-content">
 								<h4>配置动作</h4>
-								<p>添加动作："HTTP 请求" → GET 方法 → 粘贴你的壁纸 URL</p>
+								<p>添加动作："HTTP 请求" → GET 方法 → 粘贴你的壁纸 URL（响应类型为图片）</p>
 								<p>添加动作："设置壁纸" → 选择主屏幕和锁屏</p>
 							</div>
 						</div>
@@ -740,6 +741,7 @@
 		<!-- Canvas for wallpaper generation -->
 		<canvas id="wallpaperCanvas" style="display: none"></canvas>
 
+		<script src="shared/url-builder.js"></script>
 		<script src="script.js"></script>
 	</body>
 </html>

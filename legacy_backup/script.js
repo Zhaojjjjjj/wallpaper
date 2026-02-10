@@ -21,24 +21,27 @@ const state = {
     customTheme: false
 };
 
-const SUPPORTED_WALLPAPER_TYPES = new Set([
-    'year',
-    'goal',
-    'month',
-    'week',
-    'minimal',
-    'gradient',
-    'cyberpunk',
-    'nature',
-    'retro',
-    'glass',
-    'digital',
-    'quote',
-    'stats',
-    'season',
-    'binary',
-    'moon'
-]);
+const fallbackSupportedTypes = window.wallpaperUrlBuilder?.SUPPORTED_WALLPAPER_TYPES;
+const SUPPORTED_WALLPAPER_TYPES = fallbackSupportedTypes
+    ? new Set(fallbackSupportedTypes)
+    : new Set([
+        'year',
+        'goal',
+        'month',
+        'week',
+        'minimal',
+        'gradient',
+        'cyberpunk',
+        'nature',
+        'retro',
+        'glass',
+        'digital',
+        'quote',
+        'stats',
+        'season',
+        'binary',
+        'moon'
+    ]);
 const THEME_STORAGE_KEY = 'lifegrid.theme';
 
 const I18N_TEXT = {
@@ -621,28 +624,44 @@ function renderGoalPreview(container) {
 // URL Generation
 // ========================================
 function generateURL() {
-    const renderType = resolveRenderableType(state.currentType);
+    const baseUrl = getApiBaseUrl();
+    const buildFromShared = window.wallpaperUrlBuilder?.buildWallpaperImageUrl;
 
-    const params = new URLSearchParams({
-        type: renderType,
-        bg: state.config.bgColor,
-        accent: state.config.accentColor,
-        lang: state.config.language,
-        w: String(state.deviceResolution.width),
-        h: String(state.deviceResolution.height)
-    });
-
-    if (renderType === 'goal') {
-        params.set('target', state.config.targetDate);
-        if (state.config.goalName) {
-            params.set('name', state.config.goalName);
-        }
-    }
-
-    const baseUrl = window.location.origin + window.location.pathname.replace('index.html', '');
-    const url = `${baseUrl}wallpaper.html?${params.toString()}`;
+    const url = typeof buildFromShared === 'function'
+        ? buildFromShared({
+            currentType: state.currentType,
+            config: state.config,
+            deviceResolution: state.deviceResolution,
+            baseUrl
+        })
+        : `${baseUrl}api/wallpaper.png?${new URLSearchParams({
+            type: resolveRenderableType(state.currentType),
+            bg: state.config.bgColor,
+            accent: state.config.accentColor,
+            lang: state.config.language,
+            w: String(state.deviceResolution.width),
+            h: String(state.deviceResolution.height)
+        }).toString()}`;
 
     elements.wallpaperUrl.value = url;
+}
+
+function getApiBaseUrl() {
+    const configuredBase =
+        (typeof window !== 'undefined' && typeof window.WALLPAPER_API_BASE_URL === 'string' && window.WALLPAPER_API_BASE_URL.trim())
+            ? window.WALLPAPER_API_BASE_URL.trim()
+            : null;
+
+    if (configuredBase) {
+        return configuredBase;
+    }
+
+    const metaBase = document.querySelector('meta[name="wallpaper-api-base"]')?.getAttribute('content')?.trim();
+    if (metaBase) {
+        return metaBase;
+    }
+
+    return `${window.location.origin}/`;
 }
 
 async function copyURL() {
