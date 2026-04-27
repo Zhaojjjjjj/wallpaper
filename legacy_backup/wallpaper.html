@@ -1,0 +1,763 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>wallpaper Wallpaper</title>
+    <link rel="icon" type="image/svg+xml" href="icon.svg">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background: #000;
+        }
+
+        #wallpaperCanvas {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="wallpaperCanvas"></canvas>
+
+    <script>
+        /**
+         * wallpaper Wallpaper Renderer
+         * Renders wallpaper based on URL parameters for automation
+         */
+
+        // Parse URL parameters
+        function getParams() {
+            const params = new URLSearchParams(window.location.search);
+            return {
+                type: params.get('type') || 'year',
+                bg: params.get('bg') || '#000000',
+                accent: params.get('accent') || '#FFFFFF',
+                lang: params.get('lang') === 'en' ? 'en' : 'zh',
+                target: params.get('target') || getDefaultTargetDate(),
+                name: params.get('name') || '我的目标',
+                birth: params.get('birth') || null,
+                lifespan: parseInt(params.get('lifespan')) || 80,
+                width: parseInt(params.get('w')) || window.innerWidth,
+                height: parseInt(params.get('h')) || window.innerHeight
+            };
+        }
+
+        const I18N_TEXT = {
+            zh: {
+                invalidDate: '无效的目标日期',
+                daysRemaining: '剩余天数',
+                defaultGoalName: '我的目标',
+                yearLabel: '本年进度',
+                monthLabel: '本月进度',
+                weekLabel: '本周进度',
+                quotes: [
+                    '时间是最公平的资源。',
+                    '把今天过好，就是投资未来。',
+                    '进步不必很快，但要持续。',
+                    '专注当下，结果自然到来。'
+                ],
+                quoteAuthor: '每日提醒',
+                seasons: [
+                    { name: '春季', icon: '🌸' },
+                    { name: '夏季', icon: '☀️' },
+                    { name: '秋季', icon: '🍂' },
+                    { name: '冬季', icon: '❄️' }
+                ],
+                moonPhases: ['新月', '峨眉月', '上弦月', '盈凸月', '满月', '亏凸月', '下弦月', '残月']
+            },
+            en: {
+                invalidDate: 'Invalid target date',
+                daysRemaining: 'Days Left',
+                defaultGoalName: 'My Goal',
+                yearLabel: 'Year Progress',
+                monthLabel: 'Month Progress',
+                weekLabel: 'Week Progress',
+                quotes: [
+                    'Time is the fairest resource.',
+                    'A good today compounds tomorrow.',
+                    'Consistency beats intensity.',
+                    'Focus now, outcomes follow.'
+                ],
+                quoteAuthor: 'Daily Reminder',
+                seasons: [
+                    { name: 'Spring', icon: '🌸' },
+                    { name: 'Summer', icon: '☀️' },
+                    { name: 'Autumn', icon: '🍂' },
+                    { name: 'Winter', icon: '❄️' }
+                ],
+                moonPhases: ['New Moon', 'Waxing Crescent', 'First Quarter', 'Waxing Gibbous', 'Full Moon', 'Waning Gibbous', 'Last Quarter', 'Waning Crescent']
+            }
+        };
+
+        function getText(config, key) {
+            const locale = config.lang === 'en' ? 'en' : 'zh';
+            return I18N_TEXT[locale][key];
+        }
+
+        // Get default target date (7 days from now)
+        function getDefaultTargetDate() {
+            const date = new Date();
+            date.setDate(date.getDate() + 7);
+            return date.toISOString().split('T')[0];
+        }
+
+        // Helper: Draw rounded rectangle
+        function roundRect(ctx, x, y, width, height, radius) {
+            ctx.beginPath();
+            ctx.moveTo(x + radius, y);
+            ctx.lineTo(x + width - radius, y);
+            ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+            ctx.lineTo(x + width, y + height - radius);
+            ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+            ctx.lineTo(x + radius, y + height);
+            ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+            ctx.lineTo(x, y + radius);
+            ctx.quadraticCurveTo(x, y, x + radius, y);
+            ctx.closePath();
+        }
+
+        // Year Progress Wallpaper
+        function drawYear(ctx, width, height, config) {
+            const now = new Date();
+            const startOfYear = new Date(now.getFullYear(), 0, 1);
+            const endOfYear = new Date(now.getFullYear() + 1, 0, 1);
+            const totalDays = (endOfYear - startOfYear) / (1000 * 60 * 60 * 24);
+            const daysPassed = (now - startOfYear) / (1000 * 60 * 60 * 24);
+            const percent = Math.min(100, Math.max(0, (daysPassed / totalDays) * 100));
+
+            // Background
+            ctx.fillStyle = config.bg;
+            ctx.fillRect(0, 0, width, height);
+
+            // Grid settings - improved spacing
+            const cols = 13;
+            const rows = 10;
+            const cellSize = Math.min(width, height) / 28;
+            const gap = cellSize * 0.25;
+            const gridWidth = cols * cellSize + (cols - 1) * gap;
+            const gridHeight = rows * cellSize + (rows - 1) * gap;
+            const startX = (width - gridWidth) / 2;
+            const startY = (height - gridHeight) / 2 - height * 0.05;
+
+            const totalCells = cols * rows;
+            const filledCount = Math.floor((percent / 100) * totalCells);
+
+            // Draw cells
+            for (let i = 0; i < totalCells; i++) {
+                const row = Math.floor(i / cols);
+                const col = i % cols;
+                const x = startX + col * (cellSize + gap);
+                const y = startY + row * (cellSize + gap);
+
+                ctx.fillStyle = config.accent;
+                ctx.globalAlpha = i < filledCount ? 1 : 0.2;
+
+                roundRect(ctx, x, y, cellSize, cellSize, cellSize * 0.2);
+                ctx.fill();
+            }
+
+            ctx.globalAlpha = 1;
+
+            // Draw percentage - better spacing
+            const textY = startY + gridHeight + height * 0.12;
+            ctx.fillStyle = config.accent;
+            ctx.font = `bold ${Math.min(width, height) / 10}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(`${Math.floor(percent)}%`, width / 2, textY);
+
+            // Draw year
+            ctx.font = `500 ${Math.min(width, height) / 22}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
+            ctx.globalAlpha = 0.6;
+            ctx.fillText(String(now.getFullYear()), width / 2, textY + height * 0.08);
+        }
+
+        // Life Calendar Wallpaper
+        function drawLife(ctx, width, height, config) {
+            if (!config.birth) {
+                // Fallback if no birth date
+                ctx.fillStyle = config.bg;
+                ctx.fillRect(0, 0, width, height);
+                ctx.fillStyle = config.accent;
+                ctx.font = `bold ${Math.min(width, height) / 15}px sans-serif`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('请设置出生日期', width / 2, height / 2);
+                return;
+            }
+
+            const birthDate = new Date(config.birth);
+            const now = new Date();
+            const lifespanWeeks = config.lifespan * 52;
+            const weeksLived = Math.floor((now - birthDate) / (1000 * 60 * 60 * 24 * 7));
+
+            // Background
+            ctx.fillStyle = config.bg;
+            ctx.fillRect(0, 0, width, height);
+
+            // Grid settings
+            const cols = 52;
+            const rows = Math.ceil(lifespanWeeks / cols);
+            const maxCellSize = Math.min(width / (cols + 4), height / (rows + 6));
+            const cellSize = Math.min(maxCellSize, height / 100);
+            const gap = cellSize * 0.15;
+            const gridWidth = cols * cellSize + (cols - 1) * gap;
+            const gridHeight = rows * cellSize + (rows - 1) * gap;
+            const startX = (width - gridWidth) / 2;
+            const startY = (height - gridHeight) / 2;
+
+            // Draw cells
+            for (let i = 0; i < lifespanWeeks; i++) {
+                const row = Math.floor(i / cols);
+                const col = i % cols;
+                const x = startX + col * (cellSize + gap);
+                const y = startY + row * (cellSize + gap);
+
+                ctx.fillStyle = config.accent;
+
+                if (i < weeksLived) {
+                    ctx.globalAlpha = 1;
+                } else if (i === weeksLived) {
+                    ctx.globalAlpha = 1;
+                    ctx.shadowColor = config.accent;
+                    ctx.shadowBlur = cellSize * 0.5;
+                } else {
+                    ctx.globalAlpha = 0.2;
+                    ctx.shadowBlur = 0;
+                }
+
+                ctx.beginPath();
+                ctx.arc(x + cellSize / 2, y + cellSize / 2, cellSize / 2, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.shadowBlur = 0;
+            }
+
+            ctx.globalAlpha = 1;
+
+            // Draw stats at bottom
+            ctx.fillStyle = config.accent;
+            ctx.font = `500 ${Math.min(width, height) / 35}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.globalAlpha = 0.6;
+
+            const statsY = height - height * 0.05;
+            ctx.fillText(`${weeksLived.toLocaleString()} / ${lifespanWeeks.toLocaleString()} 周`, width / 2, statsY);
+        }
+
+        // Goal Countdown Wallpaper
+        function drawGoal(ctx, width, height, config) {
+            // Use default target date if not set
+            const targetDateStr = config.target || getDefaultTargetDate();
+            const targetDate = new Date(targetDateStr);
+
+            // Validate target date
+            if (isNaN(targetDate.getTime())) {
+                ctx.fillStyle = config.bg;
+                ctx.fillRect(0, 0, width, height);
+                ctx.fillStyle = config.accent;
+                ctx.font = `bold ${Math.min(width, height) / 15}px sans-serif`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(getText(config, 'invalidDate'), width / 2, height / 2);
+                return;
+            }
+
+            const now = new Date();
+            const daysRemaining = Math.ceil((targetDate - now) / (1000 * 60 * 60 * 24));
+            const totalDays = 100; // Reference for progress circle
+            const percent = Math.min(100, Math.max(0, 100 - (daysRemaining / totalDays) * 100));
+
+            // Background
+            ctx.fillStyle = config.bg;
+            ctx.fillRect(0, 0, width, height);
+
+            // Improved layout - centered with better spacing
+            const centerX = width / 2;
+            const centerY = height / 2;
+            const radius = Math.min(width, height) / 6;
+            const strokeWidth = radius * 0.08;
+
+            // Draw background circle
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+            ctx.strokeStyle = config.accent;
+            ctx.globalAlpha = 0.2;
+            ctx.lineWidth = strokeWidth;
+            ctx.stroke();
+
+            // Draw progress arc
+            const endAngle = -Math.PI / 2 + (percent / 100) * Math.PI * 2;
+
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, radius, -Math.PI / 2, endAngle);
+            ctx.strokeStyle = config.accent;
+            ctx.globalAlpha = 1;
+            ctx.lineCap = 'round';
+            ctx.stroke();
+
+            // Draw days - larger and centered
+            ctx.fillStyle = config.accent;
+            ctx.font = `bold ${radius * 0.9}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(String(Math.max(0, daysRemaining)), centerX, centerY - radius * 0.1);
+
+            // Draw label - below the number with proper spacing
+            ctx.font = `500 ${radius * 0.18}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
+            ctx.globalAlpha = 0.7;
+            ctx.fillText(getText(config, 'daysRemaining'), centerX, centerY + radius * 0.5);
+
+            // Draw goal name - at the bottom with more spacing
+            ctx.font = `600 ${Math.min(width * 0.06, 60)}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
+            ctx.globalAlpha = 1;
+            ctx.fillText(config.name || getText(config, 'defaultGoalName'), centerX, height * 0.78);
+        }
+
+        function drawBinary(ctx, width, height, config) {
+            const now = new Date();
+            const yearStart = new Date(now.getFullYear(), 0, 1);
+            const dayOfYear = Math.floor((now - yearStart) / (1000 * 60 * 60 * 24)) + 1;
+            const yearDays = ((now.getFullYear() % 4 === 0 && now.getFullYear() % 100 !== 0) || now.getFullYear() % 400 === 0) ? 366 : 365;
+            const percent = Math.min(100, Math.max(0, (dayOfYear / yearDays) * 100));
+            const binary = Math.floor(percent).toString(2).padStart(8, '0');
+
+            ctx.fillStyle = config.bg;
+            ctx.fillRect(0, 0, width, height);
+
+            ctx.fillStyle = config.accent;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+
+            ctx.font = `500 ${Math.min(width, height) / 14}px Menlo, Monaco, monospace`;
+            ctx.globalAlpha = 0.7;
+            ctx.fillText(binary, width / 2, height * 0.45);
+
+            ctx.font = `bold ${Math.min(width, height) / 8}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
+            ctx.globalAlpha = 1;
+            ctx.fillText(`${Math.floor(percent)}%`, width / 2, height * 0.58);
+        }
+
+        function drawMonth(ctx, width, height, config) {
+            const now = new Date();
+            const start = new Date(now.getFullYear(), now.getMonth(), 1);
+            const end = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+            const percent = Math.min(100, Math.max(0, ((now - start) / (end - start)) * 100));
+            drawLinearProgress(ctx, width, height, config, percent, getText(config, 'monthLabel'));
+        }
+
+        function drawWeek(ctx, width, height, config) {
+            const now = new Date();
+            const day = now.getDay();
+            const mondayOffset = (day + 6) % 7;
+            const start = new Date(now);
+            start.setHours(0, 0, 0, 0);
+            start.setDate(start.getDate() - mondayOffset);
+            const end = new Date(start);
+            end.setDate(end.getDate() + 7);
+            const percent = Math.min(100, Math.max(0, ((now - start) / (end - start)) * 100));
+            drawLinearProgress(ctx, width, height, config, percent, getText(config, 'weekLabel'));
+        }
+
+        function drawMinimal(ctx, width, height, config) {
+            const now = new Date();
+            const start = new Date(now.getFullYear(), 0, 1);
+            const end = new Date(now.getFullYear() + 1, 0, 1);
+            const percent = Math.min(100, Math.max(0, ((now - start) / (end - start)) * 100));
+            drawLinearProgress(ctx, width, height, config, percent, getText(config, 'yearLabel'));
+        }
+
+        function drawGradient(ctx, width, height, config) {
+            const now = new Date();
+            const start = new Date(now.getFullYear(), 0, 1);
+            const end = new Date(now.getFullYear() + 1, 0, 1);
+            const percent = Math.min(100, Math.max(0, ((now - start) / (end - start)) * 100));
+
+            const gradient = ctx.createLinearGradient(0, 0, width, height);
+            gradient.addColorStop(0, `${config.accent}88`);
+            gradient.addColorStop(1, config.bg);
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, width, height);
+
+            drawCenteredPercent(ctx, width, height, config, percent, getText(config, 'yearLabel'));
+        }
+
+        function drawCyberpunk(ctx, width, height, config) {
+            const now = new Date();
+            const start = new Date(now.getFullYear(), 0, 1);
+            const end = new Date(now.getFullYear() + 1, 0, 1);
+            const percent = Math.min(100, Math.max(0, ((now - start) / (end - start)) * 100));
+
+            ctx.fillStyle = config.bg;
+            ctx.fillRect(0, 0, width, height);
+
+            const cols = 16;
+            const rows = 24;
+            const cellSize = Math.min(width / (cols + 6), height / (rows + 10));
+            const gap = cellSize * 0.35;
+            const startX = (width - (cols * cellSize + (cols - 1) * gap)) / 2;
+            const startY = height * 0.16;
+            const totalCells = cols * rows;
+            const activeCount = Math.floor((percent / 100) * totalCells);
+
+            for (let index = 0; index < totalCells; index++) {
+                const row = Math.floor(index / cols);
+                const col = index % cols;
+                const x = startX + col * (cellSize + gap);
+                const y = startY + row * (cellSize + gap);
+                ctx.fillStyle = config.accent;
+                ctx.globalAlpha = index < activeCount ? 0.95 : 0.12;
+                ctx.fillRect(x, y, cellSize, cellSize);
+            }
+
+            ctx.globalAlpha = 1;
+            drawCenteredPercent(ctx, width, height, config, percent, getText(config, 'yearLabel'));
+        }
+
+        function drawNature(ctx, width, height, config) {
+            const now = new Date();
+            const start = new Date(now.getFullYear(), 0, 1);
+            const end = new Date(now.getFullYear() + 1, 0, 1);
+            const percent = Math.min(100, Math.max(0, ((now - start) / (end - start)) * 100));
+
+            const gradient = ctx.createLinearGradient(0, 0, 0, height);
+            gradient.addColorStop(0, `${config.accent}99`);
+            gradient.addColorStop(1, config.bg);
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, width, height);
+
+            drawCenteredPercent(ctx, width, height, config, percent, getText(config, 'yearLabel'));
+        }
+
+        function drawRetro(ctx, width, height, config) {
+            const now = new Date();
+            const start = new Date(now.getFullYear(), 0, 1);
+            const end = new Date(now.getFullYear() + 1, 0, 1);
+            const percent = Math.min(100, Math.max(0, ((now - start) / (end - start)) * 100));
+
+            ctx.fillStyle = config.bg;
+            ctx.fillRect(0, 0, width, height);
+
+            ctx.strokeStyle = `${config.accent}55`;
+            ctx.globalAlpha = 0.3;
+            for (let y = 0; y < height; y += 4) {
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(width, y);
+                ctx.stroke();
+            }
+            ctx.globalAlpha = 1;
+
+            ctx.fillStyle = config.accent;
+            ctx.font = `700 ${Math.min(width, height) / 9}px Menlo, Monaco, monospace`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(`YEAR ${Math.floor(percent)}%`, width / 2, height / 2);
+        }
+
+        function drawGlass(ctx, width, height, config) {
+            const now = new Date();
+            const start = new Date(now.getFullYear(), 0, 1);
+            const end = new Date(now.getFullYear() + 1, 0, 1);
+            const percent = Math.min(100, Math.max(0, ((now - start) / (end - start)) * 100));
+
+            ctx.fillStyle = config.bg;
+            ctx.fillRect(0, 0, width, height);
+
+            const cardWidth = width * 0.7;
+            const cardHeight = height * 0.24;
+            const cardX = (width - cardWidth) / 2;
+            const cardY = (height - cardHeight) / 2;
+
+            ctx.fillStyle = `${config.accent}22`;
+            roundRect(ctx, cardX, cardY, cardWidth, cardHeight, Math.min(width, height) * 0.03);
+            ctx.fill();
+
+            drawCenteredPercent(ctx, width, height, config, percent, getText(config, 'yearLabel'));
+        }
+
+        function drawDigital(ctx, width, height, config) {
+            const now = new Date();
+            const start = new Date(now.getFullYear(), 0, 1);
+            const end = new Date(now.getFullYear() + 1, 0, 1);
+            const percent = Math.min(100, Math.max(0, ((now - start) / (end - start)) * 100));
+
+            ctx.fillStyle = config.bg;
+            ctx.fillRect(0, 0, width, height);
+
+            ctx.fillStyle = config.accent;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.font = `700 ${Math.min(width, height) / 8}px Menlo, Monaco, monospace`;
+            const timeText = now.toLocaleTimeString(config.lang === 'en' ? 'en-US' : 'zh-CN', {
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: false
+            });
+            ctx.fillText(timeText, width / 2, height * 0.42);
+
+            ctx.font = `500 ${Math.min(width, height) / 20}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
+            ctx.globalAlpha = 0.75;
+            ctx.fillText(`${getText(config, 'yearLabel')} ${Math.floor(percent)}%`, width / 2, height * 0.56);
+            ctx.globalAlpha = 1;
+        }
+
+        function drawQuote(ctx, width, height, config) {
+            const quotes = getText(config, 'quotes');
+            const quote = quotes[new Date().getDate() % quotes.length];
+
+            ctx.fillStyle = config.bg;
+            ctx.fillRect(0, 0, width, height);
+
+            ctx.fillStyle = config.accent;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.font = `600 ${Math.min(width, height) / 22}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
+            ctx.fillText(`“${quote}”`, width / 2, height * 0.46);
+
+            ctx.globalAlpha = 0.7;
+            ctx.font = `500 ${Math.min(width, height) / 30}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
+            ctx.fillText(`— ${getText(config, 'quoteAuthor')}`, width / 2, height * 0.58);
+            ctx.globalAlpha = 1;
+        }
+
+        function drawStats(ctx, width, height, config) {
+            const now = new Date();
+            const yearStart = new Date(now.getFullYear(), 0, 1);
+            const yearEnd = new Date(now.getFullYear() + 1, 0, 1);
+            const year = Math.min(100, Math.max(0, ((now - yearStart) / (yearEnd - yearStart)) * 100));
+
+            const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+            const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+            const month = Math.min(100, Math.max(0, ((now - monthStart) / (monthEnd - monthStart)) * 100));
+
+            const day = now.getDay();
+            const mondayOffset = (day + 6) % 7;
+            const weekStart = new Date(now);
+            weekStart.setHours(0, 0, 0, 0);
+            weekStart.setDate(weekStart.getDate() - mondayOffset);
+            const weekEnd = new Date(weekStart);
+            weekEnd.setDate(weekEnd.getDate() + 7);
+            const week = Math.min(100, Math.max(0, ((now - weekStart) / (weekEnd - weekStart)) * 100));
+
+            ctx.fillStyle = config.bg;
+            ctx.fillRect(0, 0, width, height);
+
+            const rows = [
+                [getText(config, 'yearLabel'), year],
+                [getText(config, 'monthLabel'), month],
+                [getText(config, 'weekLabel'), week]
+            ];
+
+            ctx.textAlign = 'left';
+            ctx.textBaseline = 'middle';
+            const startX = width * 0.18;
+            const startY = height * 0.36;
+            const rowGap = height * 0.12;
+
+            rows.forEach((row, index) => {
+                const y = startY + index * rowGap;
+                ctx.fillStyle = config.accent;
+                ctx.globalAlpha = 0.7;
+                ctx.font = `500 ${Math.min(width, height) / 28}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
+                ctx.fillText(row[0], startX, y);
+
+                ctx.globalAlpha = 1;
+                ctx.font = `700 ${Math.min(width, height) / 18}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
+                ctx.fillText(`${Math.floor(row[1])}%`, width * 0.62, y);
+            });
+
+            ctx.globalAlpha = 1;
+        }
+
+        function drawSeason(ctx, width, height, config) {
+            const seasonIndex = Math.floor((((new Date().getMonth()) + 1) % 12) / 3);
+            const seasons = getText(config, 'seasons');
+            const season = seasons[seasonIndex] || seasons[0];
+
+            const now = new Date();
+            const start = new Date(now.getFullYear(), 0, 1);
+            const end = new Date(now.getFullYear() + 1, 0, 1);
+            const percent = Math.min(100, Math.max(0, ((now - start) / (end - start)) * 100));
+
+            ctx.fillStyle = config.bg;
+            ctx.fillRect(0, 0, width, height);
+
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillStyle = config.accent;
+            ctx.font = `${Math.min(width, height) / 6}px "Apple Color Emoji", "Segoe UI Emoji", sans-serif`;
+            ctx.fillText(season.icon, width / 2, height * 0.35);
+
+            ctx.font = `600 ${Math.min(width, height) / 16}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
+            ctx.fillText(season.name, width / 2, height * 0.52);
+
+            ctx.font = `700 ${Math.min(width, height) / 9}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
+            ctx.fillText(`${Math.floor(percent)}%`, width / 2, height * 0.67);
+        }
+
+        function drawLinearProgress(ctx, width, height, config, percent, label) {
+            ctx.fillStyle = config.bg;
+            ctx.fillRect(0, 0, width, height);
+
+            const trackWidth = width * 0.68;
+            const trackHeight = Math.max(8, Math.min(width, height) * 0.02);
+            const trackX = (width - trackWidth) / 2;
+            const trackY = height * 0.46;
+
+            ctx.fillStyle = `${config.accent}33`;
+            roundRect(ctx, trackX, trackY, trackWidth, trackHeight, trackHeight / 2);
+            ctx.fill();
+
+            const fillWidth = trackWidth * (Math.max(0, Math.min(100, percent)) / 100);
+            ctx.fillStyle = config.accent;
+            roundRect(ctx, trackX, trackY, fillWidth, trackHeight, trackHeight / 2);
+            ctx.fill();
+
+            drawCenteredPercent(ctx, width, height, config, percent, label);
+        }
+
+        function drawCenteredPercent(ctx, width, height, config, percent, label) {
+            ctx.fillStyle = config.accent;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.font = `700 ${Math.min(width, height) / 8}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
+            ctx.fillText(`${Math.floor(percent)}%`, width / 2, height * 0.58);
+
+            ctx.globalAlpha = 0.7;
+            ctx.font = `500 ${Math.min(width, height) / 24}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
+            ctx.fillText(label, width / 2, height * 0.69);
+            ctx.globalAlpha = 1;
+        }
+
+        function drawMoon(ctx, width, height, config) {
+            const synodicMonth = 29.53058867;
+            const knownNewMoon = new Date('2000-01-06T18:14:00Z');
+            const now = new Date();
+            const daysSince = (now - knownNewMoon) / (1000 * 60 * 60 * 24);
+            const phase = ((daysSince % synodicMonth) + synodicMonth) % synodicMonth;
+            const normalized = phase / synodicMonth;
+            const illumination = normalized <= 0.5 ? normalized * 2 : (1 - normalized) * 2;
+            const waxing = normalized <= 0.5;
+            const phaseIndex = Math.floor((normalized * 8) + 0.5) % 8;
+            const moonName = getText(config, 'moonPhases')[phaseIndex];
+
+            ctx.fillStyle = config.bg;
+            ctx.fillRect(0, 0, width, height);
+
+            const centerX = width / 2;
+            const centerY = height * 0.45;
+            const radius = Math.min(width, height) * 0.18;
+
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+            ctx.fillStyle = config.accent;
+            ctx.fill();
+
+            ctx.save();
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+            ctx.clip();
+
+            const shadowWidth = illumination >= 0.5 ? (1 - illumination) * 2 * radius : illumination * 2 * radius;
+            const shadowX = illumination >= 0.5
+                ? (waxing ? centerX : centerX - shadowWidth)
+                : (waxing ? centerX - shadowWidth : centerX);
+
+            ctx.fillStyle = config.bg;
+            ctx.fillRect(shadowX, centerY - radius, Math.max(0, shadowWidth), radius * 2);
+            ctx.restore();
+
+            ctx.fillStyle = config.accent;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.font = `600 ${Math.min(width, height) / 18}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
+            ctx.globalAlpha = 0.85;
+            ctx.fillText(moonName, width / 2, height * 0.75);
+            ctx.globalAlpha = 1;
+        }
+
+        // Main render function
+        function render() {
+            const canvas = document.getElementById('wallpaperCanvas');
+            const ctx = canvas.getContext('2d');
+            const config = getParams();
+
+            // Set canvas size
+            canvas.width = config.width;
+            canvas.height = config.height;
+
+            // Render based on type
+            switch (config.type) {
+                case 'year':
+                    drawYear(ctx, config.width, config.height, config);
+                    break;
+                case 'life':
+                    drawLife(ctx, config.width, config.height, config);
+                    break;
+                case 'goal':
+                    drawGoal(ctx, config.width, config.height, config);
+                    break;
+                case 'month':
+                    drawMonth(ctx, config.width, config.height, config);
+                    break;
+                case 'week':
+                    drawWeek(ctx, config.width, config.height, config);
+                    break;
+                case 'minimal':
+                    drawMinimal(ctx, config.width, config.height, config);
+                    break;
+                case 'gradient':
+                    drawGradient(ctx, config.width, config.height, config);
+                    break;
+                case 'cyberpunk':
+                    drawCyberpunk(ctx, config.width, config.height, config);
+                    break;
+                case 'nature':
+                    drawNature(ctx, config.width, config.height, config);
+                    break;
+                case 'retro':
+                    drawRetro(ctx, config.width, config.height, config);
+                    break;
+                case 'glass':
+                    drawGlass(ctx, config.width, config.height, config);
+                    break;
+                case 'digital':
+                    drawDigital(ctx, config.width, config.height, config);
+                    break;
+                case 'quote':
+                    drawQuote(ctx, config.width, config.height, config);
+                    break;
+                case 'stats':
+                    drawStats(ctx, config.width, config.height, config);
+                    break;
+                case 'season':
+                    drawSeason(ctx, config.width, config.height, config);
+                    break;
+                case 'binary':
+                    drawBinary(ctx, config.width, config.height, config);
+                    break;
+                case 'moon':
+                    drawMoon(ctx, config.width, config.height, config);
+                    break;
+                default:
+                    drawYear(ctx, config.width, config.height, config);
+            }
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', render);
+
+        // Re-render on resize
+        window.addEventListener('resize', render);
+    </script>
+</body>
+</html>

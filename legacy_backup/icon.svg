@@ -1,0 +1,64 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="wallpaper icon">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#151821"/>
+      <stop offset="100%" stop-color="#050608"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#8BC6FF"/>
+      <stop offset="100%" stop-color="#FFFFFF"/>
+    </linearGradient>
+  </defs>
+
+  <rect x="16" y="16" width="480" height="480" rx="128" fill="url(#bg)"/>
+
+  <g fill="#FFFFFF" opacity="0.28">
+    <circle cx="112" cy="110" r="11"/>
+    <circle cx="184" cy="110" r="11"/>
+    <circle cx="256" cy="110" r="11"/>
+    <circle cx="328" cy="110" r="11"/>
+    <circle cx="400" cy="110" r="11"/>
+
+    <circle cx="112" cy="174" r="11"/>
+    <circle cx="184" cy="174" r="11"/>
+    <circle cx="256" cy="174" r="11"/>
+    <circle cx="328" cy="174" r="11"/>
+    <circle cx="400" cy="174" r="11"/>
+
+    <circle cx="112" cy="238" r="11"/>
+    <circle cx="184" cy="238" r="11"/>
+    <circle cx="256" cy="238" r="11"/>
+    <circle cx="328" cy="238" r="11"/>
+    <circle cx="400" cy="238" r="11"/>
+
+    <circle cx="112" cy="302" r="11"/>
+    <circle cx="184" cy="302" r="11"/>
+    <circle cx="256" cy="302" r="11"/>
+    <circle cx="328" cy="302" r="11"/>
+    <circle cx="400" cy="302" r="11"/>
+  </g>
+
+  <g fill="url(#accent)">
+    <circle cx="112" cy="110" r="11"/>
+    <circle cx="184" cy="110" r="11"/>
+    <circle cx="256" cy="110" r="11"/>
+    <circle cx="328" cy="110" r="11"/>
+    <circle cx="400" cy="110" r="11"/>
+
+    <circle cx="112" cy="174" r="11"/>
+    <circle cx="184" cy="174" r="11"/>
+    <circle cx="256" cy="174" r="11"/>
+    <circle cx="328" cy="174" r="11"/>
+
+    <circle cx="112" cy="238" r="11"/>
+    <circle cx="184" cy="238" r="11"/>
+    <circle cx="256" cy="238" r="11"/>
+  </g>
+
+  <path d="M132 352 L188 432 L256 312 L324 432 L380 352"
+        fill="none"
+        stroke="url(#accent)"
+        stroke-width="28"
+        stroke-linecap="round"
+        stroke-linejoin="round"/>
+</svg>

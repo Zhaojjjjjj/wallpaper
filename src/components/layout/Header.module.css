@@ -1,0 +1,39 @@
+.header {
+	height: 80px;
+	border-bottom: 1px solid var(--border);
+	display: flex;
+	align-items: center;
+	background: var(--bg-app);
+}
+
+.container {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+}
+
+.logo {
+	font-family: "Outfit", sans-serif;
+	font-weight: 800;
+	font-size: 1.5rem;
+	letter-spacing: -0.03em;
+}
+
+.logoAccent {
+	color: var(--primary);
+}
+
+.nav {
+	display: flex;
+	gap: var(--spacing-lg);
+}
+
+.link {
+	font-weight: 500;
+	color: var(--text-muted);
+	transition: color 0.2s;
+}
+
+.link:hover {
+	color: var(--text-main);
+}
