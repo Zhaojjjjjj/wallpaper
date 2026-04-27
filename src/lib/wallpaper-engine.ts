@@ -36,6 +36,12 @@ export class WallpaperEngine {
 				case "minimal":
 					this.drawMinimal();
 					break;
+				case "life":
+					this.drawLife();
+					break;
+				case "day":
+					this.drawDay();
+					break;
 				default:
 					this.drawText("未知的壁纸类型", this.width / 2, this.height / 2, 40);
 			}
@@ -178,9 +184,10 @@ export class WallpaperEngine {
 		this.ctx.lineWidth = radius * 0.08;
 		this.ctx.stroke();
 
-		// Progress ring
-		const MAX_DAYS = 100;
-		const progress = Math.min(1, Math.max(0, (MAX_DAYS - daysLeft) / MAX_DAYS));
+		// Progress ring — calculate from actual date range
+		const totalDays = Math.max(1, Math.ceil((target.getTime() - new Date(target.getFullYear(), 0, 1).getTime()) / (1000 * 60 * 60 * 24)));
+		const daysElapsed = totalDays - daysLeft;
+		const progress = Math.min(1, Math.max(0, daysElapsed / totalDays));
 
 		this.ctx.beginPath();
 		const startAngle = -Math.PI / 2;
@@ -342,7 +349,7 @@ export class WallpaperEngine {
 
 	private drawText(text: string, x: number, y: number, size: number, weight = "normal", alpha = 1) {
 		this.ctx.globalAlpha = alpha;
-		this.ctx.fillStyle = this.config.theme.accent; // Or text color, but usually accent for wallpaper
+		this.ctx.fillStyle = this.config.theme.text || this.config.theme.accent;
 		// Fallback font stack
 		this.ctx.font = `${weight} ${size}px Inter, -apple-system, sans-serif`;
 		this.ctx.textAlign = "center";

@@ -1,4 +1,4 @@
-export type WallpaperType = "year" | "goal" | "month" | "week" | "minimal";
+export type WallpaperType = "year" | "goal" | "month" | "week" | "minimal" | "life" | "day";
 
 export interface WallpaperConfig {
 	type: WallpaperType;

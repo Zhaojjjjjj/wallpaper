@@ -114,6 +114,12 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ config, onChange }) =>
 		return index >= 0 ? index : PRESET_THEMES.length - 1; // Return custom if not found
 	};
 
+		// Get current device index
+		const getCurrentDeviceIndex = () => {
+			const index = DEVICES.findIndex((d) => d.width === config.width && d.height === config.height);
+			return index >= 0 ? index : -1;
+		};
+
 	return (
 		<div className={styles.panel}>
 			<h3 className={styles.sectionTitle}>设备配置</h3>
@@ -123,7 +129,7 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ config, onChange }) =>
 				<div className={styles.row}>
 					<div className={styles.fullWidth}>
 						<label className={styles.label}>设备预设</label>
-						<select className={styles.select} onChange={handleDeviceChange} defaultValue={0}>
+						<select className={styles.select} onChange={handleDeviceChange} value={getCurrentDeviceIndex()}>
 							{DEVICES.map((d, i) => (
 								<option key={d.name} value={i}>
 									{d.name} ({d.width}x{d.height})
@@ -174,7 +180,14 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ config, onChange }) =>
 					</>
 				)}
 
-				{["year", "month", "week", "minimal"].includes(config.type) && <p className={styles.hint}>此样式无需额外设置，只需自定义主题即可！</p>}
+				{config.type === "life" && (
+					<>
+						<Input label="出生日期" type="date" value={config.birthDate || ""} onChange={(e) => handleChange("birthDate", e.target.value)} />
+						<Input label="预期寿命" type="number" value={config.lifespan || 80} onChange={(e) => handleChange("lifespan", parseInt(e.target.value))} />
+					</>
+				)}
+
+				{["year", "month", "week", "minimal", "day"].includes(config.type) && <p className={styles.hint}>此样式无需额外设置，只需自定义主题即可！</p>}
 			</div>
 		</div>
 	);

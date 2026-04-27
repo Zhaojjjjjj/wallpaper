@@ -33,7 +33,7 @@ function WallpaperPageContent() {
 			theme: {
 				bg,
 				accent,
-				text: accent,
+				text: searchParams.get("text") || accent,
 			},
 		};
 	}, [searchParams]);

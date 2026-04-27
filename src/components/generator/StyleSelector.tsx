@@ -14,6 +14,8 @@ const STYLES: { id: WallpaperType; name: string; desc: string }[] = [
 	{ id: "month", name: "月度进度", desc: "关注当前月份" },
 	{ id: "week", name: "本周", desc: "一周七天一览" },
 	{ id: "minimal", name: "极简", desc: "纯粹数据，无干扰" },
+	{ id: "life", name: "生命日历", desc: "以周为单位可视化一生" },
+	{ id: "day", name: "时钟", desc: "模拟时钟显示当前时刻" },
 ];
 
 export const StyleSelector: React.FC<StyleSelectorProps> = ({ selected, onSelect }) => {
