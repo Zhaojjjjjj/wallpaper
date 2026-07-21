@@ -1,6 +1,14 @@
-import React, { useState } from "react";
+import React, { useId, useState } from "react";
 import { Input } from "@/components/common/Input";
 import { WallpaperConfig } from "@/lib/types";
+import {
+	finalizeWallpaperIntegerDraft,
+	normalizeWallpaperDimensions,
+	parseWallpaperIntegerDraft,
+	resolveWallpaperNumberDraft,
+} from "@/lib/wallpaper-config";
+import { formatDateOnly } from "@/lib/wallpaper-progress";
+import { DEVICE_PRESETS, resolveDevicePresetId } from "@/lib/wallpaper-devices";
 import styles from "./ConfigPanel.module.css";
 
 interface ConfigPanelProps {
@@ -18,61 +26,50 @@ const PRESET_THEMES = [
 	{ name: "自定义", bg: "", accent: "" },
 ];
 
-const DEVICES = [
-	// iPhone 17 series
-	{ name: "iPhone 17 Pro Max", width: 1320, height: 2868 },
-	{ name: "iPhone 17 Pro", width: 1179, height: 2556 },
-	{ name: "iPhone 17 Plus", width: 1290, height: 2796 },
-	{ name: "iPhone 17", width: 1179, height: 2556 },
-	// iPhone 16 series
-	{ name: "iPhone 16 Pro Max", width: 1320, height: 2868 },
-	{ name: "iPhone 16 Pro", width: 1179, height: 2556 },
-	{ name: "iPhone 16 Plus", width: 1290, height: 2796 },
-	{ name: "iPhone 16", width: 1179, height: 2556 },
-	// iPhone 15 series
-	{ name: "iPhone 15 Pro Max", width: 1290, height: 2796 },
-	{ name: "iPhone 15 Pro", width: 1179, height: 2556 },
-	{ name: "iPhone 15 Plus", width: 1290, height: 2796 },
-	{ name: "iPhone 15", width: 1179, height: 2556 },
-	// iPhone 14 series
-	{ name: "iPhone 14 Pro Max", width: 1290, height: 2796 },
-	{ name: "iPhone 14 Pro", width: 1179, height: 2556 },
-	{ name: "iPhone 14 Plus", width: 1284, height: 2778 },
-	{ name: "iPhone 14", width: 1170, height: 2532 },
-	// iPhone 13 series
-	{ name: "iPhone 13 Pro Max", width: 1284, height: 2778 },
-	{ name: "iPhone 13 Pro", width: 1170, height: 2532 },
-	{ name: "iPhone 13", width: 1170, height: 2532 },
-	{ name: "iPhone 13 mini", width: 1080, height: 2340 },
-	// iPhone 12 series
-	{ name: "iPhone 12 Pro Max", width: 1284, height: 2778 },
-	{ name: "iPhone 12 Pro", width: 1170, height: 2532 },
-	{ name: "iPhone 12", width: 1170, height: 2532 },
-	{ name: "iPhone 12 mini", width: 1080, height: 2340 },
-	// iPhone 11 series
-	{ name: "iPhone 11 Pro Max", width: 1242, height: 2688 },
-	{ name: "iPhone 11 Pro", width: 1125, height: 2436 },
-	{ name: "iPhone 11", width: 828, height: 1792 },
-	// iPhone SE/XR/XS
-	{ name: "iPhone SE (3rd gen)", width: 750, height: 1334 },
-	{ name: "iPhone XS Max", width: 1242, height: 2688 },
-	{ name: "iPhone X/XS", width: 1125, height: 2436 },
-	{ name: "iPhone XR", width: 828, height: 1792 },
-	// Android
-	{ name: "1080p Android", width: 1080, height: 2400 },
-	{ name: "2K Android", width: 1440, height: 3200 },
-	// Desktop
-	{ name: "4K Desktop", width: 3840, height: 2160 },
-	{ name: "MacBook Pro 16", width: 3456, height: 2234 },
-	{ name: "MacBook Pro 14", width: 3024, height: 1964 },
-	{ name: "MacBook Air 13", width: 2560, height: 1664 },
-];
-
 // Define valid theme field types
 type ThemeField = "bg" | "accent" | "text";
+type NumberField = "width" | "height" | "lifespan";
+
+interface NumberInputProps {
+	label: string;
+	value: number;
+	min: number;
+	max: number;
+	onChange: (value: string) => void;
+	onBlur: (value: string) => number;
+}
+
+const NumberInput: React.FC<NumberInputProps> = ({ label, value, min, max, onChange, onBlur }) => {
+	const [draft, setDraft] = useState(String(value));
+	const [isEditing, setIsEditing] = useState(false);
+
+	return (
+		<Input
+			label={label}
+			type="number"
+			min={min}
+			max={max}
+			value={resolveWallpaperNumberDraft(value, draft, isEditing)}
+			onFocus={(event) => {
+				setDraft(event.currentTarget.value);
+				setIsEditing(true);
+			}}
+			onChange={(event) => {
+				setDraft(event.target.value);
+				onChange(event.target.value);
+			}}
+			onBlur={() => {
+				setDraft(String(onBlur(draft)));
+				setIsEditing(false);
+			}}
+		/>
+	);
+};
 
 export const ConfigPanel: React.FC<ConfigPanelProps> = ({ config, onChange }) => {
 	const [customTheme, setCustomTheme] = useState(false);
+	const [selectedDeviceId, setSelectedDeviceId] = useState(() => resolveDevicePresetId(config.width, config.height));
+	const deviceSelectId = useId();
 
 	const handleChange = (field: keyof WallpaperConfig | `theme.${ThemeField}`, value: string | number) => {
 		if (field.startsWith("theme.")) {
@@ -87,10 +84,42 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ config, onChange }) =>
 	};
 
 	const handleDeviceChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-		const idx = parseInt(e.target.value);
-		if (idx === -1) return; // Custom
-		const device = DEVICES[idx];
+		const deviceId = e.target.value;
+		setSelectedDeviceId(deviceId);
+		if (deviceId === "custom") return;
+		const device = DEVICE_PRESETS.find((candidate) => candidate.id === deviceId);
+		if (!device) return;
 		onChange({ ...config, width: device.width, height: device.height });
+	};
+
+	const applyNumberValue = (field: NumberField, normalized: number) => {
+		if (field === "width" || field === "height") {
+			const dimensions = normalizeWallpaperDimensions(
+				field === "width" ? normalized : config.width,
+				field === "height" ? normalized : config.height
+			);
+			onChange({ ...config, ...dimensions });
+			setSelectedDeviceId("custom");
+			return;
+		}
+
+		handleChange(field, normalized);
+	};
+
+	const handleNumberChange = (field: NumberField, value: string, min: number, max: number) => {
+		if (field === "width" || field === "height") setSelectedDeviceId("custom");
+
+		const parsed = parseWallpaperIntegerDraft(value, min, max);
+		if (parsed === undefined) return;
+
+		applyNumberValue(field, parsed);
+	};
+
+	const handleNumberBlur = (field: NumberField, value: string, min: number, max: number): number => {
+		const currentValue = config[field] ?? 80;
+		const normalized = finalizeWallpaperIntegerDraft(value, min, max, currentValue);
+		applyNumberValue(field, normalized);
+		return normalized;
 	};
 
 	const handleThemeSelect = (index: number) => {
@@ -106,6 +135,14 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ config, onChange }) =>
 		}
 	};
 
+	const handleTargetDateChange = (targetDate: string) => {
+		onChange({
+			...config,
+			targetDate,
+			goalStartDate: config.goalStartDate || formatDateOnly(new Date()),
+		});
+	};
+
 	// Get current theme index
 	const getCurrentThemeIndex = () => {
 		const index = PRESET_THEMES.findIndex(
@@ -113,12 +150,6 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ config, onChange }) =>
 		);
 		return index >= 0 ? index : PRESET_THEMES.length - 1; // Return custom if not found
 	};
-
-		// Get current device index
-		const getCurrentDeviceIndex = () => {
-			const index = DEVICES.findIndex((d) => d.width === config.width && d.height === config.height);
-			return index >= 0 ? index : -1;
-		};
 
 	return (
 		<div className={styles.panel}>
@@ -128,20 +159,20 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ config, onChange }) =>
 			<div className={styles.group}>
 				<div className={styles.row}>
 					<div className={styles.fullWidth}>
-						<label className={styles.label}>设备预设</label>
-						<select className={styles.select} onChange={handleDeviceChange} value={getCurrentDeviceIndex()}>
-							{DEVICES.map((d, i) => (
-								<option key={d.name} value={i}>
+						<label className={styles.label} htmlFor={deviceSelectId}>设备预设</label>
+						<select id={deviceSelectId} className={styles.select} onChange={handleDeviceChange} value={selectedDeviceId}>
+							{DEVICE_PRESETS.map((d) => (
+								<option key={d.id} value={d.id}>
 									{d.name} ({d.width}x{d.height})
 								</option>
 							))}
-							<option value={-1}>自定义</option>
+							<option value="custom">自定义</option>
 						</select>
 					</div>
 				</div>
 				<div className={styles.row}>
-					<Input label="宽度" type="number" value={config.width} onChange={(e) => handleChange("width", parseInt(e.target.value))} />
-					<Input label="高度" type="number" value={config.height} onChange={(e) => handleChange("height", parseInt(e.target.value))} />
+					<NumberInput label="宽度" value={config.width} min={320} max={4320} onChange={(value) => handleNumberChange("width", value, 320, 4320)} onBlur={(value) => handleNumberBlur("width", value, 320, 4320)} />
+					<NumberInput label="高度" value={config.height} min={320} max={7680} onChange={(value) => handleNumberChange("height", value, 320, 7680)} onBlur={(value) => handleNumberBlur("height", value, 320, 7680)} />
 				</div>
 			</div>
 
@@ -150,6 +181,7 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ config, onChange }) =>
 				<div className={styles.themeGrid}>
 					{PRESET_THEMES.map((theme, index) => (
 						<button
+							type="button"
 							key={theme.name}
 							className={`${styles.themeOption} ${getCurrentThemeIndex() === index ? styles.themeActive : ""}`}
 							onClick={() => handleThemeSelect(index)}
@@ -166,6 +198,7 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ config, onChange }) =>
 					<div className={styles.row}>
 						<Input label="背景色" type="color" value={config.theme.bg} onChange={(e) => handleChange("theme.bg", e.target.value)} />
 						<Input label="强调色" type="color" value={config.theme.accent} onChange={(e) => handleChange("theme.accent", e.target.value)} />
+						<Input label="文字色" type="color" value={config.theme.text} onChange={(e) => handleChange("theme.text", e.target.value)} />
 					</div>
 				)}
 			</div>
@@ -175,15 +208,16 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ config, onChange }) =>
 			<div className={styles.group}>
 				{config.type === "goal" && (
 					<>
-						<Input label="目标名称" value={config.goalName || ""} placeholder="我的大目标" onChange={(e) => handleChange("goalName", e.target.value)} />
-						<Input label="目标日期" type="date" value={config.targetDate || ""} onChange={(e) => handleChange("targetDate", e.target.value)} />
+						<Input label="目标名称" value={config.goalName || ""} maxLength={40} placeholder="我的大目标" onChange={(e) => handleChange("goalName", e.target.value.slice(0, 40))} />
+						<Input label="开始日期" type="date" max={config.targetDate} value={config.goalStartDate || ""} onChange={(e) => handleChange("goalStartDate", e.target.value)} />
+						<Input label="目标日期" type="date" min={config.goalStartDate} value={config.targetDate || ""} onChange={(e) => handleTargetDateChange(e.target.value)} />
 					</>
 				)}
 
 				{config.type === "life" && (
 					<>
 						<Input label="出生日期" type="date" value={config.birthDate || ""} onChange={(e) => handleChange("birthDate", e.target.value)} />
-						<Input label="预期寿命" type="number" value={config.lifespan || 80} onChange={(e) => handleChange("lifespan", parseInt(e.target.value))} />
+						<NumberInput label="预期寿命" value={config.lifespan ?? 80} min={1} max={120} onChange={(value) => handleNumberChange("lifespan", value, 1, 120)} onBlur={(value) => handleNumberBlur("lifespan", value, 1, 120)} />
 					</>
 				)}
 

@@ -1,0 +1,15 @@
+.viewport {
+	width: 100vw;
+	height: 100vh;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	overflow: hidden;
+}
+
+.canvas {
+	width: 100%;
+	height: 100%;
+	display: block;
+	object-fit: contain;
+}

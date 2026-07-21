@@ -1,5 +1,6 @@
-import React, { useState, useMemo } from "react";
+import React, { useMemo, useState, useSyncExternalStore } from "react";
 import { WallpaperConfig } from "@/lib/types";
+import { buildWallpaperImagePath, buildWallpaperPath } from "@/lib/wallpaper-config";
 import { Input } from "@/components/common/Input";
 import { Button } from "@/components/common/Button";
 import styles from "./UrlGenerator.module.css";
@@ -8,50 +9,52 @@ interface UrlGeneratorProps {
 	config: WallpaperConfig;
 }
 
+const subscribeToBrowserEnvironment = () => () => {};
+const getBrowserOrigin = () => window.location.origin;
+const getServerOrigin = () => "";
+const getBrowserTimeZone = () => Intl.DateTimeFormat().resolvedOptions().timeZone;
+const getServerTimeZone = () => "";
+
 export const UrlGenerator: React.FC<UrlGeneratorProps> = ({ config }) => {
-	const [copied, setCopied] = useState(false);
+	const [copyResult, setCopyResult] = useState<{ url: string; status: "success" | "error" } | null>(null);
+	const origin = useSyncExternalStore(subscribeToBrowserEnvironment, getBrowserOrigin, getServerOrigin);
+	const browserTimeZone = useSyncExternalStore(subscribeToBrowserEnvironment, getBrowserTimeZone, getServerTimeZone);
 
-	const url = useMemo(() => {
-		if (typeof window === "undefined") return "";
-
-		const params = new URLSearchParams();
-		params.set("type", config.type);
-		params.set("width", config.width.toString());
-		params.set("height", config.height.toString());
-		params.set("bg", config.theme.bg);
-		params.set("accent", config.theme.accent);
-		params.set("text", config.theme.text);
-
-		if (config.birthDate) params.set("birthDate", config.birthDate);
-		if (config.lifespan) params.set("lifespan", config.lifespan.toString());
-		if (config.targetDate) params.set("targetDate", config.targetDate);
-		if (config.goalName) params.set("goalName", config.goalName);
-
-		return `${window.location.origin}/wallpaper?${params.toString()}`;
-	}, [config]);
+	const linkConfig = useMemo(() => ({
+		...config,
+		timeZone: config.timeZone || browserTimeZone || undefined,
+	}), [browserTimeZone, config]);
+	const paths = useMemo(() => ({
+		image: buildWallpaperImagePath(linkConfig),
+		preview: buildWallpaperPath(linkConfig),
+	}), [linkConfig]);
+	const url = `${origin}${paths.image}`;
+	const copyStatus = copyResult?.url === url ? copyResult.status : "idle";
 
 	const handleCopy = async () => {
 		try {
 			await navigator.clipboard.writeText(url);
-			setCopied(true);
-			setTimeout(() => setCopied(false), 2000);
-		} catch (err) {
-			console.error("复制失败", err);
+			setCopyResult({ url, status: "success" });
+		} catch {
+			setCopyResult({ url, status: "error" });
 		}
 	};
 
 	return (
 		<div className={styles.container}>
-			<h3 className={styles.title}>自动化链接</h3>
-			<p className={styles.desc}>
-				复制此链接，在 iOS 快捷指令或 Android MacroDroid 中设置每日自动访问，壁纸将每天自动更新。
-			</p>
-			<div className={styles.inputGroup}>
-				<Input readOnly value={url} className={styles.urlInput} />
-				<Button onClick={handleCopy} variant="primary" className={styles.copyBtn}>
-					{copied ? "已复制！" : "复制链接"}
-				</Button>
-			</div>
+				<h3 className={styles.title}>PNG 壁纸链接</h3>
+				<p className={styles.desc}>
+					此链接直接返回 PNG 图片，可用于系统快捷指令、自动化工具或直接保存。
+				</p>
+				<div className={styles.inputGroup}>
+					<Input aria-label="PNG 壁纸链接" readOnly value={url} className={styles.urlInput} />
+					<Button onClick={handleCopy} variant="primary" className={styles.copyBtn} disabled={!origin}>
+						{copyStatus === "success" ? "已复制！" : copyStatus === "error" ? "复制失败" : "复制链接"}
+					</Button>
+				</div>
+				<a className={styles.previewLink} href={`${origin}${paths.preview}`} target="_blank" rel="noreferrer">
+					打开全屏预览
+				</a>
 		</div>
 	);
 };

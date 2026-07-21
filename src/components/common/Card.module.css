@@ -6,6 +6,9 @@
 	transition: all 0.3s var(--ease-smooth);
 	position: relative;
 	overflow: hidden;
+	width: 100%;
+	color: inherit;
+	text-align: left;
 }
 
 .interactive:hover {
@@ -17,6 +20,11 @@
 
 .interactive:active {
 	transform: translateY(-2px);
+}
+
+.interactive:focus-visible {
+	outline: 2px solid var(--primary);
+	outline-offset: 3px;
 }
 
 .active {

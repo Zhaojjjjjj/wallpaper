@@ -1,20 +1,34 @@
 import { WallpaperConfig } from "./types";
+import { calculateDayLayout, calculateLifeGrid } from "./wallpaper-layout";
+import {
+	calculateGoalProgress,
+	calculateLifeState,
+	calculateMonthProgress,
+	calculateYearProgress,
+	formatDateOnly,
+	parseDateOnly,
+	toWallClockDate,
+} from "./wallpaper-progress";
 
 export class WallpaperEngine {
 	private ctx: CanvasRenderingContext2D;
 	private config: WallpaperConfig;
 	private width: number;
 	private height: number;
+	private now: Date;
 
-	constructor(ctx: CanvasRenderingContext2D, config: WallpaperConfig) {
+	constructor(ctx: CanvasRenderingContext2D, config: WallpaperConfig, now = new Date()) {
 		this.ctx = ctx;
 		this.config = config;
 		this.width = config.width;
 		this.height = config.height;
+		this.now = toWallClockDate(now, config.timeZone);
 	}
 
 	public render() {
 		try {
+			this.resetDrawingState();
+
 			// Clear background
 			this.ctx.fillStyle = this.config.theme.bg;
 			this.ctx.fillRect(0, 0, this.width, this.height);
@@ -45,7 +59,7 @@ export class WallpaperEngine {
 				default:
 					this.drawText("未知的壁纸类型", this.width / 2, this.height / 2, 40);
 			}
-		} catch (error) {
+		} catch {
 			// Handle any rendering errors gracefully
 			this.ctx.fillStyle = "#000000";
 			this.ctx.fillRect(0, 0, this.width, this.height);
@@ -58,12 +72,8 @@ export class WallpaperEngine {
 	}
 
 	private drawYear() {
-		const now = new Date();
-		const startOfYear = new Date(now.getFullYear(), 0, 1);
-		const endOfYear = new Date(now.getFullYear() + 1, 0, 1);
-		const totalDays = (endOfYear.getTime() - startOfYear.getTime()) / (1000 * 60 * 60 * 24);
-		const daysPassed = (now.getTime() - startOfYear.getTime()) / (1000 * 60 * 60 * 24);
-		const percent = Math.min(100, Math.max(0, (daysPassed / totalDays) * 100));
+		const now = new Date(this.now);
+		const progress = calculateYearProgress(now);
 
 		// Use legacy style logic: 10 rows x 13 cols = 130 cells.
 		const lCols = 13;
@@ -77,7 +87,7 @@ export class WallpaperEngine {
 		const startX = (this.width - gridWidth) / 2;
 		const startY = (this.height - gridHeight) / 2 - this.height * 0.05;
 
-		const filledCount = Math.floor((percent / 100) * (lCols * lRows));
+		const filledCount = Math.floor(progress * lCols * lRows);
 
 		for (let i = 0; i < lCols * lRows; i++) {
 			const row = Math.floor(i / lCols);
@@ -96,7 +106,7 @@ export class WallpaperEngine {
 
 		// Text - better spacing
 		const textY = startY + gridHeight + this.height * 0.12;
-		this.drawText(`${Math.floor(percent)}%`, this.width / 2, textY, Math.min(this.width, this.height) / 10, "bold");
+		this.drawText(`${Math.floor(progress * 100)}%`, this.width / 2, textY, Math.min(this.width, this.height) / 10, "bold");
 		this.drawText(String(now.getFullYear()), this.width / 2, textY + this.height * 0.08, Math.min(this.width, this.height) / 22, "500", 0.6);
 	}
 
@@ -107,70 +117,57 @@ export class WallpaperEngine {
 		}
 
 		// Validate birth date
-		const birthDate = new Date(this.config.birthDate);
-		if (isNaN(birthDate.getTime())) {
+		if (!parseDateOnly(this.config.birthDate)) {
 			this.drawText("Invalid birth date", this.width / 2, this.height / 2, 40);
 			return;
 		}
 
-		const now = new Date();
-		const lifespanWeeks = (this.config.lifespan || 80) * 52;
-		const weeksLived = Math.floor((now.getTime() - birthDate.getTime()) / (1000 * 60 * 60 * 24 * 7));
-
-		const cols = 26; // 26 weeks per row (half year)
-		const rows = Math.ceil(lifespanWeeks / cols);
-
-		const cellSize = Math.min(this.width / (cols + 4), this.height / (rows + 20));
-		const gap = cellSize * 0.2;
-		const gridWidth = cols * cellSize + (cols - 1) * gap;
-		const gridHeight = rows * cellSize + (rows - 1) * gap;
-
-		const startX = (this.width - gridWidth) / 2;
-		const startY = (this.height - gridHeight) / 2;
+		const now = new Date(this.now);
+		const lifespanYears = Math.min(120, Math.max(1, this.config.lifespan || 80));
+		const lifespanWeeks = lifespanYears * 52;
+		const lifeState = calculateLifeState(this.config.birthDate, now, lifespanWeeks);
+		const weeksLived = lifeState.weeksLived;
+		const layout = calculateLifeGrid(this.width, this.height, lifespanWeeks);
 
 		for (let i = 0; i < lifespanWeeks; i++) {
-			const row = Math.floor(i / cols);
-			const col = i % cols;
-			const x = startX + col * (cellSize + gap);
-			const y = startY + row * (cellSize + gap);
+			const row = Math.floor(i / layout.cols);
+			const col = i % layout.cols;
+			const x = layout.startX + col * (layout.cellSize + layout.gap);
+			const y = layout.startY + row * (layout.cellSize + layout.gap);
 
 			this.ctx.fillStyle = this.config.theme.accent;
 
 			if (i < weeksLived) {
 				this.ctx.globalAlpha = 1;
-			} else if (i === weeksLived) {
+			} else if (lifeState.hasStarted && i === weeksLived) {
 				this.ctx.globalAlpha = 1;
 				this.ctx.shadowColor = this.config.theme.accent;
-				this.ctx.shadowBlur = cellSize;
+				this.ctx.shadowBlur = layout.cellSize;
 			} else {
 				this.ctx.globalAlpha = 0.15;
 				this.ctx.shadowBlur = 0;
 			}
 
 			this.ctx.beginPath();
-			this.ctx.arc(x + cellSize / 2, y + cellSize / 2, cellSize / 2.5, 0, Math.PI * 2);
+			this.ctx.arc(x + layout.cellSize / 2, y + layout.cellSize / 2, layout.cellSize / 2.5, 0, Math.PI * 2);
 			this.ctx.fill();
 			this.ctx.shadowBlur = 0;
 		}
 
 		this.ctx.globalAlpha = 1;
-		const statsY = this.height - this.height * 0.08;
-		this.drawText(`${weeksLived.toLocaleString()} / ${lifespanWeeks.toLocaleString()} Weeks`, this.width / 2, statsY, Math.min(this.width, this.height) / 40, "500", 0.6);
+		this.drawText(`${weeksLived.toLocaleString()} / ${lifespanWeeks.toLocaleString()} Weeks`, this.width / 2, layout.statsY, Math.min(this.width, this.height) / 40, "500", 0.6);
 	}
 
 	private drawGoal() {
 		// Use default target date (7 days from now) if not set
 		const targetDateStr = this.config.targetDate || this.getDefaultTargetDate();
-		const target = new Date(targetDateStr);
+		const now = new Date(this.now);
+		const goalState = calculateGoalProgress(this.config.goalStartDate, targetDateStr, now);
 
-		// Validate target date
-		if (isNaN(target.getTime())) {
+		if (!goalState) {
 			this.drawText("Invalid target date", this.width / 2, this.height / 2, 40);
 			return;
 		}
-
-		const now = new Date();
-		const daysLeft = Math.ceil((target.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
 
 		const centerX = this.width / 2;
 		const centerY = this.height / 2;
@@ -184,20 +181,15 @@ export class WallpaperEngine {
 		this.ctx.lineWidth = radius * 0.08;
 		this.ctx.stroke();
 
-		// Progress ring — calculate from actual date range
-		const totalDays = Math.max(1, Math.ceil((target.getTime() - new Date(target.getFullYear(), 0, 1).getTime()) / (1000 * 60 * 60 * 24)));
-		const daysElapsed = totalDays - daysLeft;
-		const progress = Math.min(1, Math.max(0, daysElapsed / totalDays));
-
 		this.ctx.beginPath();
 		const startAngle = -Math.PI / 2;
-		const endAngle = startAngle + Math.PI * 2 * progress;
+		const endAngle = startAngle + Math.PI * 2 * goalState.progress;
 		this.ctx.arc(centerX, centerY, radius, startAngle, endAngle);
 		this.ctx.globalAlpha = 1;
 		this.ctx.stroke();
 
 		// Days number - larger and centered
-		this.drawText(Math.max(0, daysLeft).toString(), centerX, centerY - radius * 0.1, radius * 0.9, "bold");
+		this.drawText(goalState.daysLeft.toString(), centerX, centerY - radius * 0.1, radius * 0.9, "bold");
 
 		// Days left label - below the number with proper spacing
 		this.drawText("剩余天数", centerX, centerY + radius * 0.5, radius * 0.18, "500", 0.7);
@@ -208,18 +200,14 @@ export class WallpaperEngine {
 	}
 
 	private getDefaultTargetDate(): string {
-		const date = new Date();
+		const date = new Date(this.now);
 		date.setDate(date.getDate() + 7); // Default to 7 days from now
-		return date.toISOString().split("T")[0];
+		return formatDateOnly(date);
 	}
 
 	private drawMonth() {
-		const now = new Date();
-		const start = new Date(now.getFullYear(), now.getMonth(), 1);
-		const end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-		const total = end.getDate();
-		const current = now.getDate();
-		const percent = current / total;
+		const now = new Date(this.now);
+		const percent = calculateMonthProgress(now);
 
 		// Draw a sleek bar
 		const barWidth = this.width * 0.75;
@@ -244,7 +232,7 @@ export class WallpaperEngine {
 
 	private drawWeek() {
 		// 7 dots
-		const now = new Date();
+		const now = new Date(this.now);
 		const day = now.getDay() || 7; // 1-7
 
 		const dotSize = Math.min(this.width / 12, this.height / 20);
@@ -252,6 +240,7 @@ export class WallpaperEngine {
 		const totalW = 7 * dotSize + 6 * gap;
 		let startX = (this.width - totalW) / 2;
 		const centerY = this.height / 2;
+		this.ctx.shadowColor = this.config.theme.accent;
 
 		for (let i = 1; i <= 7; i++) {
 			this.ctx.fillStyle = this.config.theme.accent;
@@ -276,18 +265,12 @@ export class WallpaperEngine {
 	}
 
 	private drawDay() {
-		const now = new Date();
-		const minutes = now.getHours() * 60 + now.getMinutes();
-		const total = 24 * 60;
-		const percent = minutes / total;
-
-		const cx = this.width / 2;
-		const cy = this.height / 2;
-		const r = this.width * 0.3;
+		const now = new Date(this.now);
+		const layout = calculateDayLayout(this.width, this.height);
 
 		// Clock face
 		this.ctx.beginPath();
-		this.ctx.arc(cx, cy, r, 0, Math.PI * 2);
+		this.ctx.arc(layout.centerX, layout.centerY, layout.radius, 0, Math.PI * 2);
 		this.ctx.strokeStyle = this.config.theme.accent;
 		this.ctx.lineWidth = 4;
 		this.ctx.globalAlpha = 0.3;
@@ -298,32 +281,46 @@ export class WallpaperEngine {
 		const minAngle = (now.getMinutes() * 6 * Math.PI) / 180; // 360/60 = 6
 
 		this.ctx.globalAlpha = 1;
-		this.drawHand(cx, cy, hourAngle, r * 0.5, 12);
-		this.drawHand(cx, cy, minAngle, r * 0.8, 6);
+		this.drawHand(layout.centerX, layout.centerY, hourAngle, layout.radius * 0.5, Math.max(4, layout.radius * 0.025));
+		this.drawHand(layout.centerX, layout.centerY, minAngle, layout.radius * 0.8, Math.max(2, layout.radius * 0.0125));
 
-		this.drawText(`${now.getHours().toString().padStart(2, "0")}:${now.getMinutes().toString().padStart(2, "0")}`, cx, cy + r + 100, 80, "bold");
+		this.drawText(
+			`${now.getHours().toString().padStart(2, "0")}:${now.getMinutes().toString().padStart(2, "0")}`,
+			layout.centerX,
+			layout.timeY,
+			layout.timeFontSize,
+			"bold"
+		);
 	}
 
 	private drawMinimal() {
-		const now = new Date();
-		const startOfYear = new Date(now.getFullYear(), 0, 1);
-		const endOfYear = new Date(now.getFullYear() + 1, 0, 1);
-		const totalDays = (endOfYear.getTime() - startOfYear.getTime()) / (1000 * 60 * 60 * 24);
-		const daysPassed = (now.getTime() - startOfYear.getTime()) / (1000 * 60 * 60 * 24);
-		const percent = Math.min(100, Math.max(0, (daysPassed / totalDays) * 100));
+		const now = new Date(this.now);
+		const progress = calculateYearProgress(now);
 
 		const cx = this.width / 2;
 		const cy = this.height / 2;
 
 		// Better proportion for minimal style
-		this.drawText(`${Math.floor(percent)}%`, cx, cy - this.height * 0.02, this.width * 0.3, "800");
+		this.drawText(`${Math.floor(progress * 100)}%`, cx, cy - this.height * 0.02, this.width * 0.3, "800");
 		this.drawText(String(now.getFullYear()), cx, cy + this.height * 0.12, Math.min(this.width * 0.06, 60), "300", 0.5);
 	}
 
 	// --- Helpers ---
 
+	private resetDrawingState() {
+		this.ctx.setTransform(1, 0, 0, 1, 0, 0);
+		this.ctx.globalAlpha = 1;
+		this.ctx.globalCompositeOperation = "source-over";
+		this.ctx.lineCap = "butt";
+		this.ctx.lineJoin = "miter";
+		this.ctx.shadowBlur = 0;
+		this.ctx.shadowColor = "transparent";
+		this.ctx.clearRect(0, 0, this.width, this.height);
+	}
+
 	private drawHand(cx: number, cy: number, angle: number, length: number, width: number) {
 		this.ctx.save();
+		this.ctx.lineCap = "round";
 		this.ctx.translate(cx, cy);
 		this.ctx.rotate(angle);
 		this.ctx.beginPath();

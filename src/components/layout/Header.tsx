@@ -1,17 +1,18 @@
 import React from "react";
+import Link from "next/link";
 import styles from "./Header.module.css";
 
 export const Header = () => {
 	return (
 		<header className={styles.header}>
 			<div className={`container ${styles.container}`}>
-				<div className={styles.logo}>
+				<Link href="/" className={styles.logo} aria-label="LifeGrid 首页">
 					Life<span className={styles.logoAccent}>Grid</span>
-				</div>
+				</Link>
 				<nav className={styles.nav}>
-					<a href="#" className={styles.link}>
+					<Link href="/" className={styles.link}>
 						Generator
-					</a>
+					</Link>
 					{/* <a href="#about" className={styles.link}>About</a> */}
 				</nav>
 			</div>

@@ -1,36 +1,46 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# LifeGrid
 
-## Getting Started
+LifeGrid generates time-progress wallpapers in the browser and as direct PNG responses.
 
-First, run the development server:
+## Development
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open `http://localhost:3000` to configure and preview a wallpaper.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Quality checks
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+npm test
+npm run test:png
+npm run lint
+npm run typecheck
+npm run build
+```
 
-## Learn More
+The test suite uses the installed TypeScript compiler and Node's built-in test runner, so no additional test dependency is required.
 
-To learn more about Next.js, take a look at the following resources:
+## Wallpaper endpoints
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- `/wallpaper?...` renders a clean full-screen Canvas preview.
+- `/api/wallpaper.png?...` returns a directly downloadable PNG image.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Supported query parameters:
 
-## Deploy on Vercel
+| Parameter | Description |
+| --- | --- |
+| `type` | `year`, `goal`, `month`, `week`, `minimal`, `life`, or `day` |
+| `width`, `height` | Output dimensions; normalized to the global pixel budget |
+| `bg`, `accent`, `text` | Six-digit hexadecimal colors |
+| `birthDate` | Life-calendar birth date in `YYYY-MM-DD` format |
+| `lifespan` | Life-calendar lifespan from 1 to 120 years |
+| `goalStartDate`, `targetDate` | Goal range in `YYYY-MM-DD` format |
+| `goalName` | Goal label, limited to 40 characters |
+| `timeZone` | IANA time zone such as `Asia/Shanghai` |
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Preview parameters are normalized before Canvas rendering. The PNG endpoint accepts only canonical values and rejects unknown, duplicate, invalid, or style-irrelevant parameters so equivalent images cannot bypass the shared cache.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+PNG text is rendered with the bundled Noto Sans SC font. Its SIL Open Font License is included at `src/app/api/wallpaper.png/NotoSansSC-LICENSE.txt`.

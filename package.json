@@ -4,9 +4,12 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "next build --webpack",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test:png": "npm run build && node scripts/test-png-api.mjs",
+    "typecheck": "tsc --noEmit --incremental false",
+    "test": "tsc -p tsconfig.test.json && node --test .test-dist/src/**/*.test.js"
   },
   "dependencies": {
     "next": "16.1.6",

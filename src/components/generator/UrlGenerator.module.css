@@ -37,3 +37,14 @@
 	height: 46px;
 	flex-shrink: 0;
 }
+
+.previewLink {
+	align-self: flex-start;
+	color: var(--primary);
+	font-size: 0.9rem;
+	font-weight: 600;
+}
+
+.previewLink:hover {
+	text-decoration: underline;
+}

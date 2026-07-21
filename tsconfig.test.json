@@ -1,0 +1,22 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "incremental": false,
+    "module": "CommonJS",
+    "moduleResolution": "Node",
+    "noEmit": false,
+    "outDir": ".test-dist",
+    "rootDir": "."
+  },
+  "include": [
+    "src/lib/types.ts",
+    "src/lib/wallpaper-config.ts",
+    "src/lib/wallpaper-config.test.ts",
+    "src/lib/wallpaper-engine.ts",
+    "src/lib/wallpaper-devices.ts",
+    "src/lib/wallpaper-layout.ts",
+    "src/lib/wallpaper-progress.ts",
+    "src/lib/wallpaper-svg.ts",
+    "src/lib/wallpaper-time.ts"
+  ]
+}

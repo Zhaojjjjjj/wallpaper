@@ -10,8 +10,18 @@ interface CardProps {
 }
 
 export const Card: React.FC<CardProps> = ({ children, className = "", onClick, isActive = false, isInteractive = false }) => {
+	const classes = `${styles.card} ${isInteractive ? styles.interactive : ""} ${isActive ? styles.active : ""} ${className}`;
+
+	if (isInteractive) {
+		return (
+			<button type="button" className={classes} onClick={onClick} aria-pressed={isActive}>
+				{children}
+			</button>
+		);
+	}
+
 	return (
-		<div className={`${styles.card} ${isInteractive ? styles.interactive : ""} ${isActive ? styles.active : ""} ${className}`} onClick={onClick}>
+		<div className={classes}>
 			{children}
 		</div>
 	);
