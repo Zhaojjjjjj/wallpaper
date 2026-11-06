@@ -12,7 +12,7 @@ export const PreviewCanvas: React.FC<PreviewCanvasProps> = ({ config, className 
 	return (
 		<div className={`${styles.container} ${className}`}>
 			<div className={styles.canvasWrapper} style={{ aspectRatio: `${config.width} / ${config.height}` }}>
-				<WallpaperCanvas config={config} className={styles.canvas} />
+				<WallpaperCanvas config={config} className={styles.canvas} maxRenderDimension={1080} />
 			</div>
 			<div className={styles.info}>
 				{config.width} x {config.height}

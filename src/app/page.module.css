@@ -12,8 +12,6 @@
 
 @media (min-width: 1024px) {
 	.grid {
-		grid-template-columns: 1fr 1fr; /* 50/50 split or 40/60? Let's do 1 : 1 for now or 450px fixed left? */
-		/* Better: Preview takes space it needs but sticky. Left usually 40% */
 		grid-template-columns: 45% 50%;
 		justify-content: space-between;
 	}
@@ -28,7 +26,7 @@
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing-lg);
-	top: 10rem;
+	top: 6.5rem;
 }
 
 .controlsCol {
@@ -47,4 +45,29 @@
 	margin-bottom: var(--spacing-md);
 	color: var(--text-main);
 	font-size: 1.5rem;
+}
+
+.hero {
+	padding-top: var(--spacing-xl);
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing-sm);
+}
+
+.eyebrow {
+	font-size: 0.8rem;
+	font-weight: 600;
+	letter-spacing: 0.12em;
+	color: var(--primary);
+}
+
+.heroTitle {
+	font-size: 2.25rem;
+	line-height: 1.15;
+}
+
+.heroDesc {
+	color: var(--text-muted);
+	font-size: 1rem;
+	max-width: 34rem;
 }

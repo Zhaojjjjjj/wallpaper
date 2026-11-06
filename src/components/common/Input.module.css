@@ -29,6 +29,7 @@
 .input:focus {
 	border-color: var(--primary);
 	outline: none;
+	box-shadow: 0 0 0 3px var(--primary-glow);
 }
 
 /* Color picker override */

@@ -13,7 +13,6 @@ export const Header = () => {
 					<Link href="/" className={styles.link}>
 						Generator
 					</Link>
-					{/* <a href="#about" className={styles.link}>About</a> */}
 				</nav>
 			</div>
 		</header>

@@ -22,7 +22,7 @@ const PRESET_THEMES = [
 	{ name: "暗夜蓝", bg: "#0a0a1a", accent: "#4fc3f7" },
 	{ name: "森林绿", bg: "#0d1f0d", accent: "#81c784" },
 	{ name: "暖橙色", bg: "#1a0f0a", accent: "#ff8a65" },
-	{ name: "白底紫", bg: "#ffffff", accent: "#9c27b0" },
+	{ name: "白底紫", bg: "#ffffff", accent: "#7c3aed" },
 	{ name: "自定义", bg: "", accent: "" },
 ];
 

@@ -1,21 +1,23 @@
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@500;700&display=swap");
-
 :root {
-	/* Colors - Dark Theme Default (Premium) */
-	--bg-app: #050505;
-	--bg-card: #121212;
-	--bg-card-hover: #1e1e1e;
-	--bg-input: #1a1a1a;
+	/* Colors - Light Theme (white + violet) */
+	--bg-app: #ffffff;
+	--bg-card: #ffffff;
+	--bg-card-hover: #fbfaff;
+	--bg-input: #ffffff;
+	--bg-subtle: #f6f4fa;
 
-	--primary: #8b5cf6; /* Violet */
-	--primary-glow: rgba(139, 92, 246, 0.5);
-	--secondary: #ec4899; /* Pink */
+	--primary: #7c3aed;
+	--primary-dark: #6d28d9;
+	--primary-glow: rgba(124, 58, 237, 0.1);
 
-	--text-main: #ffffff;
-	--text-muted: #a1a1aa;
+	--text-main: #1a1625;
+	--text-muted: #6f6a7a;
 
-	--border: #27272a;
-	--border-hover: #3f3f46;
+	--border: #e7e3ee;
+	--border-hover: #cfc6e3;
+
+	/* Typography */
+	--font-mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
 
 	/* Spacing */
 	--spacing-xs: 0.25rem;
@@ -31,7 +33,6 @@
 	--radius-full: 9999px;
 
 	/* Animation */
-	--ease-elastic: cubic-bezier(0.68, -0.6, 0.32, 1.6);
 	--ease-smooth: cubic-bezier(0.4, 0, 0.2, 1);
 }
 
@@ -53,11 +54,7 @@ body {
 body {
 	color: var(--text-main);
 	background: var(--bg-app);
-	font-family:
-		"Inter",
-		-apple-system,
-		BlinkMacSystemFont,
-		sans-serif;
+	font-family: var(--font-inter), "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Noto Sans SC", "Microsoft YaHei", sans-serif;
 	line-height: 1.5;
 }
 
@@ -67,9 +64,14 @@ h3,
 h4,
 h5,
 h6 {
-	font-family: "Outfit", "Inter", sans-serif;
+	font-family: inherit;
 	font-weight: 700;
 	letter-spacing: -0.02em;
+}
+
+a {
+	color: inherit;
+	text-decoration: none;
 }
 
 button {
@@ -91,13 +93,6 @@ select {
 	max-width: 1200px;
 	margin: 0 auto;
 	padding: 0 var(--spacing-lg);
-}
-
-.gradient-text {
-	background: linear-gradient(135deg, #fff 0%, #a5b4fc 100%);
-	-webkit-background-clip: text;
-	background-clip: text;
-	color: transparent;
 }
 
 /* Scrollbar */

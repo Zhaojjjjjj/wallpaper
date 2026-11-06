@@ -5,7 +5,7 @@
 }
 
 .sectionTitle {
-	font-family: "Outfit", sans-serif;
+	font-family: inherit;
 	font-size: 1.1rem;
 	color: var(--text-main);
 	border-bottom: 1px solid var(--border);
@@ -46,6 +46,11 @@
 	width: 100%;
 }
 
+.select:focus {
+	border-color: var(--primary);
+	box-shadow: 0 0 0 3px var(--primary-glow);
+}
+
 .hint {
 	font-size: 0.9rem;
 	color: var(--text-muted);
@@ -79,6 +84,7 @@
 .themeActive {
 	border-color: var(--primary);
 	background: var(--primary-glow);
+	box-shadow: 0 0 0 1px var(--primary);
 }
 
 .themePreview {
