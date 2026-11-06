@@ -26,6 +26,7 @@ const PRESET_THEMES: { name: string; bg: string; accent: string; text?: string }
 	{ name: "暮橙", bg: "#1c1007", accent: "#fb923c" },
 	{ name: "石墨", bg: "#101014", accent: "#a1a1aa", text: "#f4f4f5" },
 	{ name: "紫夜", bg: "#150a2e", accent: "#a78bfa", text: "#ede9fe" },
+	{ name: "宣纸", bg: "#fdfcf8", accent: "#c03926", text: "#1a1a18" },
 	{ name: "自定义", bg: "", accent: "" },
 ];
 
@@ -251,7 +252,7 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ config, onChange }) =>
 					</>
 				)}
 
-				{["year", "month", "week", "today", "minimal", "day"].includes(config.type) && <p className={styles.hint}>此样式无需额外设置，只需自定义主题即可！</p>}
+				{["year", "month", "week", "today", "calendar", "minimal", "day"].includes(config.type) && <p className={styles.hint}>此样式无需额外设置，只需自定义主题即可！</p>}
 			</div>
 		</div>
 	);

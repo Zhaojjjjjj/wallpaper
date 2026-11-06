@@ -3,6 +3,7 @@ import { toWallClockDate } from "./wallpaper-progress";
 import {
 	FUTURE_OPACITY,
 	TRACK_OPACITY,
+	calculateCalendarLayout,
 	calculateDayLayout,
 	calculateGoalLayout,
 	calculateLifeLayout,
@@ -59,6 +60,9 @@ export class WallpaperEngine {
 				break;
 			case "today":
 				this.drawToday();
+				break;
+			case "calendar":
+				this.drawCalendar();
 				break;
 			case "minimal":
 				this.drawMinimal();
@@ -306,6 +310,61 @@ export class WallpaperEngine {
 		}
 
 		this.footer(layout.fullDateLabel, `还剩约 ${layout.hoursLeft} 小时`, frame);
+	}
+
+	private drawCalendar() {
+		const layout = calculateCalendarLayout(this.config, this.now);
+		const { accent, text } = this.config.theme;
+		const frame = layout.frame;
+
+		this.eyebrow(`${layout.monthEn} · ${layout.monthName}`, frame.marginX, frame.eyebrowY, frame.eyebrowSize, "left", 0.6);
+		this.eyebrow(`${String(layout.dayOfYear).padStart(3, "0")} / ${layout.totalDays}`, frame.rightX, frame.eyebrowY, frame.eyebrowSize, "right", 0.45);
+		this.hairline(frame.marginX, frame.rightX, layout.headerRuleY, accent, TRACK_OPACITY, 1);
+
+		this.drawText(String(layout.dayOfMonth), frame.marginX - layout.dateSize * 0.03, layout.dateY, layout.dateSize, 300, 1, { align: "left" });
+		this.drawText(layout.weekdayCn, frame.marginX, layout.weekdayY, layout.weekdaySize, "500", 0.95, { align: "left" });
+		this.drawText(layout.weekdayEn, frame.rightX, layout.weekdayY, layout.weekdaySize * 0.48, "600", 0.45, { align: "right", tracking: layout.weekdaySize * 0.18 });
+		if (layout.isWeekend) this.dot(layout.weekendDotX, layout.weekendDotY, Math.max(3, layout.weekdaySize * 0.14), accent, 1);
+
+		// The month's small line motif.
+		for (const stroke of layout.motifLines) {
+			this.ctx.save();
+			this.ctx.strokeStyle = stroke.accent ? accent : text;
+			this.ctx.globalAlpha = 0.85;
+			this.ctx.lineWidth = stroke.width;
+			this.ctx.lineCap = "round";
+			this.ctx.beginPath();
+			this.ctx.moveTo(stroke.x1, stroke.y1);
+			this.ctx.lineTo(stroke.x2, stroke.y2);
+			this.ctx.stroke();
+			this.ctx.restore();
+		}
+		for (const circle of layout.motifCircles) {
+			if (circle.filled) this.dot(circle.cx, circle.cy, circle.r, circle.accent ? accent : text, 0.9);
+			else this.ring(circle.cx, circle.cy, circle.r, circle.accent ? accent : text, circle.width);
+		}
+		this.drawText(layout.motifName, this.width / 2, layout.motifCaptionY, layout.motifCaptionSize, "500", 0.5, { tracking: layout.motifCaptionSize * 0.5 });
+
+		// Quote: vermilion dash, then the day's sentence.
+		this.ctx.save();
+		this.ctx.fillStyle = accent;
+		this.ctx.fillRect(frame.marginX, layout.dashY, layout.dashWidth, Math.max(3, this.width * 0.006));
+		this.ctx.restore();
+		layout.quoteLines.forEach((line, i) => {
+			this.drawText(line, frame.marginX, layout.quoteFirstY + i * layout.quoteLineHeight, layout.quoteSize, "500", 0.95, { align: "left" });
+		});
+
+		// Seal: a small accent square stamped with 日.
+		this.ctx.save();
+		this.ctx.fillStyle = accent;
+		this.ctx.fillRect(layout.sealX, layout.sealY, layout.sealSize, layout.sealSize);
+		this.ctx.restore();
+		this.drawText("日", layout.sealX + layout.sealSize / 2, layout.sealY + layout.sealSize / 2, layout.sealSize * 0.58, "700", 1, { color: this.config.theme.bg });
+
+		this.hairline(frame.marginX, frame.rightX, layout.footerRuleY, accent, TRACK_OPACITY, 1);
+		this.drawText("ONE PAGE A DAY", frame.marginX, frame.footerY, frame.footerSize, "600", 0.45, { align: "left", tracking: frame.footerSize * 0.22 });
+		this.hairline(layout.progressX0, layout.progressX1, frame.footerY, accent, TRACK_OPACITY, 2);
+		this.dot(layout.progressDotX, frame.footerY, Math.max(3, this.width * 0.006), accent, 1);
 	}
 
 	private drawGoal() {

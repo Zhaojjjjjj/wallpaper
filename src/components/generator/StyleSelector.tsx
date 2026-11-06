@@ -16,6 +16,7 @@ const STYLES: { id: WallpaperType; name: string; desc: string }[] = [
 	{ id: "month", name: "月历", desc: "真实日历，今日高亮" },
 	{ id: "week", name: "本周", desc: "七日长条，今日整列高亮" },
 	{ id: "today", name: "今日", desc: "24 小时刻度，实时流逝" },
+	{ id: "calendar", name: "日历", desc: "每日一页，一天一句" },
 	{ id: "goal", name: "目标倒计时", desc: "一条时间轴，从开始到截止" },
 	{ id: "life", name: "生命日历", desc: "以周为单位的一生" },
 	{ id: "day", name: "时钟", desc: "数字刻度表盘，带秒针" },

@@ -16,6 +16,7 @@ re-download it daily and your wallpaper always shows today's progress.
 | `month` | A real calendar of the current month, today highlighted, with a progress hairline |
 | `week` | The seven days of this week as filled / ringed / outlined dots |
 | `today` | Day progress as a 24-hour tick scale, updated every minute |
+| `calendar` | A one-page-a-day calendar in the spirit of zz's calendar365: giant date, weekday, a small line motif that changes with the month, and that day's sentence from the 365-quote set, with a seal stamp and a year-progress line |
 | `minimal` | Just the year progress percentage, nothing else |
 | `life` | A life calendar in weeks, from a birth date and expected lifespan |
 | `day` | A bezel-less analog clock face with minute/hour ticks and a second hand |
@@ -50,7 +51,7 @@ Supported query parameters:
 
 | Parameter | Description |
 | --- | --- |
-| `type` | `year`, `goal`, `month`, `week`, `today`, `minimal`, `life`, or `day` |
+| `type` | `year`, `goal`, `month`, `week`, `today`, `calendar`, `minimal`, `life`, or `day` |
 | `width`, `height` | Output dimensions; normalized to the global pixel budget |
 | `bg`, `accent`, `text` | Six-digit hexadecimal colors |
 | `birthDate` | Life-calendar birth date in `YYYY-MM-DD` format |

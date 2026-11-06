@@ -1,4 +1,5 @@
 import { WallpaperConfig } from "./types";
+import { getDailyQuote } from "./calendar-quotes";
 import {
 	calculateGoalProgress,
 	calculateLifeState,
@@ -415,5 +416,189 @@ export function calculateMinimalLayout(config: WallpaperConfig, now: Date): Mini
 		todayIndex: index,
 		totalDays: total,
 		year: now.getFullYear(),
+	};
+}
+
+export interface MotifLine {
+	x1: number;
+	y1: number;
+	x2: number;
+	y2: number;
+	width: number;
+	accent?: boolean;
+}
+
+export interface MotifCircle {
+	cx: number;
+	cy: number;
+	r: number;
+	width: number;
+	accent?: boolean;
+	filled?: boolean;
+}
+
+export interface CalendarLayout {
+	frame: PosterFrame;
+	headerRuleY: number;
+	dateY: number;
+	dateSize: number;
+	weekdayY: number;
+	weekdaySize: number;
+	weekendDotX: number;
+	weekendDotY: number;
+	motifCaptionY: number;
+	motifCaptionSize: number;
+	motifLines: MotifLine[];
+	motifCircles: MotifCircle[];
+	dashY: number;
+	dashWidth: number;
+	quoteSize: number;
+	quoteLineHeight: number;
+	quoteLines: string[];
+	quoteFirstY: number;
+	sealX: number;
+	sealY: number;
+	sealSize: number;
+	footerRuleY: number;
+	progressX0: number;
+	progressX1: number;
+	progressDotX: number;
+	dayOfYear: number;
+	totalDays: number;
+	dayOfMonth: number;
+	weekdayCn: string;
+	weekdayEn: string;
+	isWeekend: boolean;
+	monthEn: string;
+	monthName: string;
+	motifName: string;
+	quote: string;
+}
+
+const WEEKDAY_CN = ["星期一", "星期二", "星期三", "星期四", "星期五", "星期六", "星期日"];
+const WEEKDAY_EN = ["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY", "SUNDAY"];
+const MOTIF_NAMES = ["寒梅", "春雨", "新芽", "落花", "青叶", "荷风", "烈日", "海浪", "秋月", "柿子", "枯枝", "落雪"];
+
+function wrapQuote(quote: string, maxChars: number): string[] {
+	const lines: string[] = [];
+	let current = "";
+	for (const char of quote) {
+		if (current.length >= maxChars) {
+			// Prefer breaking right after punctuation.
+			const punct = Math.max(current.lastIndexOf("，"), current.lastIndexOf("。"), current.lastIndexOf("；"), current.lastIndexOf("、"));
+			if (punct >= Math.floor(maxChars * 0.5)) {
+				lines.push(current.slice(0, punct + 1));
+				current = current.slice(punct + 1) + char;
+				continue;
+			}
+			lines.push(current);
+			current = char;
+		} else {
+			current += char;
+		}
+	}
+	if (current) lines.push(current);
+	return lines.slice(0, 3);
+}
+
+function calendarMotif(month: number, cx: number, cy: number, u: number): { lines: MotifLine[]; circles: MotifCircle[] } {
+	const line = (x1: number, y1: number, x2: number, y2: number, width = 2.5, accent = false): MotifLine => ({ x1: cx + x1 * u, y1: cy + y1 * u, x2: cx + x2 * u, y2: cy + y2 * u, width, accent });
+	const circle = (x: number, y: number, r: number, width = 2.5, accent = false, filled = false): MotifCircle => ({ cx: cx + x * u, cy: cy + y * u, r: r * u, width, accent, filled });
+	switch (month) {
+		case 1: // 寒梅: bare branch with three blossoms, one in vermilion
+			return { lines: [line(-0.7, 0.75, 0.55, -0.7, 3), line(0.05, 0.05, 0.75, 0.15, 2)], circles: [circle(-0.28, 0.28, 0.13), circle(0.22, -0.3, 0.16, 2.5, true), circle(0.52, -0.62, 0.11)] };
+		case 2: // 春雨: cloud edge and three rain strokes
+			return { lines: [line(-0.8, -0.55, 0.8, -0.55, 2.5), line(-0.5, -0.2, -0.62, 0.5, 2), line(0, -0.2, -0.12, 0.62, 2), line(0.5, -0.2, 0.38, 0.5, 2)], circles: [] };
+		case 3: // 新芽: stem with two leaves
+			return { lines: [line(0, 0.8, 0, -0.5, 3), line(0, -0.1, -0.55, -0.55, 2.5), line(0, -0.3, 0.55, -0.75, 2.5), line(-0.6, 0.8, 0.6, 0.8, 2)], circles: [] };
+		case 4: // 落花: petals drifting down
+			return { lines: [], circles: [circle(-0.45, -0.6, 0.14), circle(0.05, -0.15, 0.11), circle(0.42, 0.35, 0.14, 2.5, true), circle(-0.1, 0.68, 0.09)] };
+		case 5: // 青叶: one leaf, stem and vein
+			return { lines: [line(0, 0.85, 0, -0.8, 2.5), line(0, -0.8, -0.55, 0.1, 2.5), line(-0.55, 0.1, 0, 0.85, 2.5), line(0, 0.85, 0.55, 0.1, 2.5), line(0.55, 0.1, 0, -0.8, 2.5)], circles: [] };
+		case 6: // 荷风: lotus over a water line
+			return { lines: [line(0, -0.75, -0.55, 0.25, 2.5), line(-0.55, 0.25, 0, 0.45, 2.5), line(0, 0.45, 0.55, 0.25, 2.5), line(0.55, 0.25, 0, -0.75, 2.5), line(-0.85, 0.72, 0.85, 0.72, 2)], circles: [] };
+		case 7: // 烈日: sun with eight rays
+			return {
+				lines: Array.from({ length: 8 }, (_, i) => {
+					const a = (i / 8) * Math.PI * 2;
+					return line(Math.cos(a) * 0.62, Math.sin(a) * 0.62, Math.cos(a) * 0.85, Math.sin(a) * 0.85, 2.5);
+				}),
+				circles: [circle(0, 0, 0.42, 3)],
+			};
+		case 8: // 海浪: two scalloped rows as zigzag
+			return {
+				lines: [
+					line(-0.9, -0.15, -0.45, -0.5, 2.5), line(-0.45, -0.5, 0, -0.15, 2.5), line(0, -0.15, 0.45, -0.5, 2.5), line(0.45, -0.5, 0.9, -0.15, 2.5),
+					line(-0.68, 0.45, -0.23, 0.1, 2.5), line(-0.23, 0.1, 0.22, 0.45, 2.5), line(0.22, 0.45, 0.67, 0.1, 2.5),
+				],
+				circles: [],
+			};
+		case 9: // 秋月: full moon and one accent star
+			return { lines: [], circles: [circle(-0.15, 0, 0.55, 3), circle(0.68, -0.5, 0.05, 2, true, true)] };
+		case 10: // 柿子: fruit with calyx cross
+			return { lines: [line(0, -0.62, 0, -0.85, 3), line(-0.3, -0.55, 0.3, -0.55, 2.5)], circles: [circle(0, 0.15, 0.62, 3)] };
+		case 11: // 枯枝: main branch and twigs
+			return { lines: [line(-0.08, 0.85, 0.05, -0.8, 3.5), line(0.02, -0.15, 0.7, -0.6, 2.5), line(0, 0.25, -0.68, -0.25, 2.5), line(0.04, -0.42, 0.8, -0.45, 2)], circles: [] };
+		default: // 落雪: six-spoke snowflake
+			return {
+				lines: Array.from({ length: 3 }, (_, i) => {
+					const a = (i / 3) * Math.PI;
+					return line(-Math.cos(a) * 0.7, -Math.sin(a) * 0.7, Math.cos(a) * 0.7, Math.sin(a) * 0.7, 2.5);
+				}),
+				circles: [circle(0, 0, 0.1, 2.5)],
+			};
+	}
+}
+
+export function calculateCalendarLayout(config: WallpaperConfig, now: Date): CalendarLayout {
+	const { width, height } = config;
+	const frame = posterFrame(width, height);
+	const { index, total } = getDayOfYearInfo(now);
+	const quote = getDailyQuote(index);
+	const month = now.getMonth();
+	const weekdayIndex = (now.getDay() + 6) % 7;
+	const motifCenterX = width / 2;
+	const motifCenterY = height * 0.572;
+	const motif = calendarMotif(month + 1, motifCenterX, motifCenterY, width * 0.16);
+	const quoteSize = Math.min(width * 0.04, height * 0.026);
+	const maxChars = Math.max(8, Math.floor(frame.contentWidth / (quoteSize * 1.04)));
+	const quoteLines = wrapQuote(quote, maxChars);
+	const sealSize = width * 0.062;
+	return {
+		frame,
+		headerRuleY: height * 0.188,
+		dateY: height * 0.298,
+		dateSize: width * 0.42,
+		weekdayY: height * 0.428,
+		weekdaySize: Math.min(width * 0.05, height * 0.032),
+		weekendDotX: frame.marginX + Math.min(width * 0.05, height * 0.032) * 3.45,
+		weekendDotY: height * 0.428,
+		motifCaptionY: height * 0.668,
+		motifCaptionSize: Math.min(width * 0.03, height * 0.019),
+		motifLines: motif.lines,
+		motifCircles: motif.circles,
+		dashY: height * 0.742,
+		dashWidth: width * 0.075,
+		quoteSize,
+		quoteLineHeight: quoteSize * 1.8,
+		quoteLines,
+		quoteFirstY: height * 0.742 + quoteSize * 1.55,
+		sealX: frame.rightX - sealSize,
+		sealY: height * 0.742 - sealSize * 0.32,
+		sealSize,
+		footerRuleY: height * 0.862,
+		progressX0: frame.rightX - width * 0.3,
+		progressX1: frame.rightX,
+		progressDotX: frame.rightX - width * 0.3 + width * 0.3 * (total > 1 ? index / (total - 1) : 0),
+		dayOfYear: index + 1,
+		totalDays: total,
+		dayOfMonth: now.getDate(),
+		weekdayCn: WEEKDAY_CN[weekdayIndex],
+		weekdayEn: WEEKDAY_EN[weekdayIndex],
+		isWeekend: weekdayIndex >= 5,
+		monthEn: MONTH_EN[month],
+		monthName: MONTH_NAMES[month],
+		motifName: MOTIF_NAMES[month],
+		quote,
 	};
 }

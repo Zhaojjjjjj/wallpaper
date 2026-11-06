@@ -2,6 +2,7 @@ import { WallpaperConfig } from "./types";
 import {
 	FUTURE_OPACITY,
 	TRACK_OPACITY,
+	calculateCalendarLayout,
 	calculateDayLayout,
 	calculateGoalLayout,
 	calculateLifeLayout,
@@ -319,12 +320,48 @@ function minimalParts(config: WallpaperConfig, now: Date): Parts {
 	return { layers, shapes };
 }
 
+function calendarParts(config: WallpaperConfig, now: Date): Parts {
+	const layout = calculateCalendarLayout(config, now);
+	const { accent, text, bg } = config.theme;
+	const frame = layout.frame;
+	const layers: WallpaperTextLayer[] = [
+		eyebrowLayer(`${layout.monthEn} · ${layout.monthName}`, frame.marginX, frame.eyebrowY, frame.eyebrowSize, "left", 0.6),
+		eyebrowLayer(`${String(layout.dayOfYear).padStart(3, "0")} / ${layout.totalDays}`, frame.rightX, frame.eyebrowY, frame.eyebrowSize, "right", 0.45),
+		{ text: String(layout.dayOfMonth), x: frame.marginX - layout.dateSize * 0.03, y: layout.dateY, size: layout.dateSize, weight: 300, opacity: 1, align: "left" },
+		{ text: layout.weekdayCn, x: frame.marginX, y: layout.weekdayY, size: layout.weekdaySize, weight: 500, opacity: 0.95, align: "left" },
+		{ text: layout.weekdayEn, x: frame.rightX, y: layout.weekdayY, size: layout.weekdaySize * 0.48, weight: 600, opacity: 0.45, align: "right", tracking: layout.weekdaySize * 0.18 },
+		{ text: layout.motifName, x: config.width / 2, y: layout.motifCaptionY, size: layout.motifCaptionSize, weight: 500, opacity: 0.5, tracking: layout.motifCaptionSize * 0.5 },
+		...layout.quoteLines.map((line, i) => ({ text: line, x: frame.marginX, y: layout.quoteFirstY + i * layout.quoteLineHeight, size: layout.quoteSize, weight: 500, opacity: 0.95, align: "left" as const })),
+		{ text: "日", x: layout.sealX + layout.sealSize / 2, y: layout.sealY + layout.sealSize / 2, size: layout.sealSize * 0.58, weight: 700, opacity: 1, color: bg },
+		{ text: "ONE PAGE A DAY", x: frame.marginX, y: frame.footerY, size: frame.footerSize, weight: 600, opacity: 0.45, align: "left", tracking: frame.footerSize * 0.22 },
+	];
+	let shapes = lineElement(frame.marginX, layout.headerRuleY, frame.rightX, layout.headerRuleY, accent, TRACK_OPACITY, 1);
+	if (layout.isWeekend) {
+		shapes += `<circle cx="${layout.weekendDotX}" cy="${layout.weekendDotY}" r="${Math.max(3, layout.weekdaySize * 0.14)}" fill="${accent}"/>`;
+	}
+	for (const stroke of layout.motifLines) {
+		shapes += `<line x1="${stroke.x1}" y1="${stroke.y1}" x2="${stroke.x2}" y2="${stroke.y2}" stroke="${stroke.accent ? accent : text}" stroke-opacity="0.85" stroke-width="${stroke.width}" stroke-linecap="round"/>`;
+	}
+	for (const circle of layout.motifCircles) {
+		shapes += circle.filled
+			? `<circle cx="${circle.cx}" cy="${circle.cy}" r="${circle.r}" fill="${circle.accent ? accent : text}" fill-opacity="0.9"/>`
+			: `<circle cx="${circle.cx}" cy="${circle.cy}" r="${circle.r}" fill="none" stroke="${circle.accent ? accent : text}" stroke-opacity="0.85" stroke-width="${circle.width}"/>`;
+	}
+	shapes += `<rect x="${frame.marginX}" y="${layout.dashY}" width="${layout.dashWidth}" height="${Math.max(3, config.width * 0.006)}" fill="${accent}"/>`;
+	shapes += `<rect x="${layout.sealX}" y="${layout.sealY}" width="${layout.sealSize}" height="${layout.sealSize}" fill="${accent}"/>`;
+	shapes += lineElement(frame.marginX, layout.footerRuleY, frame.rightX, layout.footerRuleY, accent, TRACK_OPACITY, 1);
+	shapes += lineElement(layout.progressX0, frame.footerY, layout.progressX1, frame.footerY, accent, TRACK_OPACITY, 2);
+	shapes += `<circle cx="${layout.progressDotX}" cy="${frame.footerY}" r="${Math.max(3, config.width * 0.006)}" fill="${accent}"/>`;
+	return { layers, shapes };
+}
+
 function partsFor(config: WallpaperConfig, now: Date): Parts {
 	switch (config.type) {
 		case "year": return yearParts(config, now);
 		case "month": return monthParts(config, now);
 		case "week": return weekParts(config, now);
 		case "today": return todayParts(config, now);
+		case "calendar": return calendarParts(config, now);
 		case "goal": return goalParts(config, now);
 		case "life": return lifeParts(config, now);
 		case "day": return dayParts(config, now);
