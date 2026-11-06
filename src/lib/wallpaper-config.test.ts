@@ -32,7 +32,7 @@ import {
 } from "./wallpaper-time";
 import { getWallpaperTextLayers, renderWallpaperSvg, svgToDataUrl } from "./wallpaper-svg";
 import { WallpaperEngine } from "./wallpaper-engine";
-import { DEVICE_PRESETS, resolveDevicePresetId } from "./wallpaper-devices";
+import { DEVICE_PRESETS, getDeviceCategory, resolveDevicePresetId } from "./wallpaper-devices";
 
 test("invalid public parameters fall back to safe wallpaper defaults", () => {
 	const config = parseWallpaperConfig(
@@ -445,6 +445,17 @@ test("each canvas render resets inherited drawing state and leaves no glow state
 	assert.equal(context.lineCap, "butt");
 	assert.equal(context.shadowBlur, 0);
 	assert.equal(context.shadowColor, "transparent");
+});
+
+test("device presets include the iPhone 18 range and iPhone Duo", () => {
+	const byId = new Map(DEVICE_PRESETS.map((device) => [device.id, device]));
+
+	assert.deepEqual(byId.get("iphone-18-pro-max"), { id: "iphone-18-pro-max", name: "iPhone 18 Pro Max", width: 1320, height: 2868 });
+	assert.deepEqual(byId.get("iphone-18-pro"), { id: "iphone-18-pro", name: "iPhone 18 Pro", width: 1206, height: 2622 });
+	assert.deepEqual(byId.get("iphone-duo-unfolded"), { id: "iphone-duo-unfolded", name: "iPhone Duo（展开）", width: 1878, height: 2670 });
+	assert.deepEqual(byId.get("iphone-duo-cover"), { id: "iphone-duo-cover", name: "iPhone Duo（外屏）", width: 1398, height: 2034 });
+	assert.deepEqual(byId.get("iphone-air"), { id: "iphone-air", name: "iPhone Air", width: 1260, height: 2736 });
+	assert.equal(getDeviceCategory("iphone-duo-unfolded"), "iphone");
 });
 
 test("device presets use calibrated dimensions and preserve duplicate-resolution identity", () => {

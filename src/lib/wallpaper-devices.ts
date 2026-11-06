@@ -6,6 +6,15 @@ export interface DevicePreset {
 }
 
 export const DEVICE_PRESETS: readonly DevicePreset[] = [
+	{ id: "iphone-18-pro-max", name: "iPhone 18 Pro Max", width: 1320, height: 2868 },
+	{ id: "iphone-18-pro", name: "iPhone 18 Pro", width: 1206, height: 2622 },
+	{ id: "iphone-18", name: "iPhone 18", width: 1206, height: 2622 },
+	{ id: "iphone-duo-unfolded", name: "iPhone Duo（展开）", width: 1878, height: 2670 },
+	{ id: "iphone-duo-cover", name: "iPhone Duo（外屏）", width: 1398, height: 2034 },
+	{ id: "iphone-17-pro-max", name: "iPhone 17 Pro Max", width: 1320, height: 2868 },
+	{ id: "iphone-17-pro", name: "iPhone 17 Pro", width: 1206, height: 2622 },
+	{ id: "iphone-air", name: "iPhone Air", width: 1260, height: 2736 },
+	{ id: "iphone-17", name: "iPhone 17", width: 1206, height: 2622 },
 	{ id: "iphone-16-pro-max", name: "iPhone 16 Pro Max", width: 1320, height: 2868 },
 	{ id: "iphone-16-pro", name: "iPhone 16 Pro", width: 1206, height: 2622 },
 	{ id: "iphone-16-plus", name: "iPhone 16 Plus", width: 1290, height: 2796 },
