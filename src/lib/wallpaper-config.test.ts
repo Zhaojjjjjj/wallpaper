@@ -203,14 +203,16 @@ test("every supported wallpaper type renders finite standalone SVG", () => {
 	}
 });
 
-test("SVG preserves Canvas glow and rounded clock-hand styling", () => {
+test("SVG preserves Canvas today-ring and rounded clock-hand styling", () => {
 	const base = parseWallpaperConfig(new URLSearchParams());
 	const weekSvg = renderWallpaperSvg({ ...base, type: "week" }, new Date(2026, 6, 20));
 	const lifeSvg = renderWallpaperSvg({ ...base, type: "life", birthDate: "1990-01-01" }, new Date(2026, 6, 20));
 	const daySvg = renderWallpaperSvg({ ...base, type: "day" }, new Date(2026, 6, 20));
 
-	assert.match(weekSvg, /filter="url\(#current-week-glow\)"/);
-	assert.match(lifeSvg, /filter="url\(#current-life-week-glow\)"/);
+	assert.match(weekSvg, /class="today-ring"/);
+	assert.match(lifeSvg, /class="today-ring"/);
+	assert.doesNotMatch(weekSvg, /<filter/);
+	assert.doesNotMatch(lifeSvg, /<filter/);
 	assert.match(daySvg, /stroke-linecap="round"/);
 });
 
@@ -220,7 +222,7 @@ test("life SVG uses bounded path nodes instead of thousands of circle elements",
 	};
 	const svg = renderWallpaperSvg(config, new Date(2026, 6, 18));
 
-	assert.equal((svg.match(/<circle\b/g) || []).length, 0);
+	assert.ok((svg.match(/<circle\b/g) || []).length <= 1, "only the current-week ring may be a circle element");
 	assert.ok((svg.match(/<path\b/g) || []).length <= 2);
 });
 
@@ -294,7 +296,7 @@ test("Canvas year variants use calendar progress across DST transitions", () => 
 			};
 			const config = { ...parseWallpaperConfig(new URLSearchParams()), type };
 			new WallpaperEngine(context, config, new Date(2026, 2, 11, 8, 24)).render();
-			return text[0];
+			return text.find((value) => value.endsWith("%"));
 		};
 		process.stdout.write(JSON.stringify([render("year"), render("minimal")]));
 	`;
@@ -400,7 +402,7 @@ test("default life grid reserves canvas space for every week and its stats", () 
 	assert.ok(layout.statsY <= 2556);
 });
 
-test("each canvas render resets inherited drawing state and sets the week glow color", () => {
+test("each canvas render resets inherited drawing state and leaves no glow state", () => {
 	let transformReset = false;
 	let cleared = false;
 	const context = {
@@ -417,7 +419,16 @@ test("each canvas render resets inherited drawing state and sets the week glow c
 		textAlign: "start",
 		textBaseline: "alphabetic",
 		arc() {},
+		arcTo() {},
 		beginPath() {},
+		closePath() {},
+		lineTo() {},
+		moveTo() {},
+		restore() {},
+		rotate() {},
+		save() {},
+		stroke() {},
+		translate() {},
 		clearRect() { cleared = true; },
 		fill() {},
 		fillRect() {},
@@ -433,7 +444,7 @@ test("each canvas render resets inherited drawing state and sets the week glow c
 	assert.equal(context.globalCompositeOperation, "source-over");
 	assert.equal(context.lineCap, "butt");
 	assert.equal(context.shadowBlur, 0);
-	assert.equal(context.shadowColor, config.theme.accent);
+	assert.equal(context.shadowColor, "transparent");
 });
 
 test("device presets use calibrated dimensions and preserve duplicate-resolution identity", () => {

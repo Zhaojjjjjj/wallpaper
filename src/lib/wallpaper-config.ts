@@ -25,6 +25,7 @@ const TYPE_SPECIFIC_QUERY_KEYS: Record<WallpaperType, ReadonlySet<string>> = {
 	goal: new Set(["targetDate", "goalStartDate", "goalName"]),
 	month: new Set(),
 	week: new Set(),
+	today: new Set(),
 	minimal: new Set(),
 	life: new Set(["birthDate", "lifespan"]),
 	day: new Set(),

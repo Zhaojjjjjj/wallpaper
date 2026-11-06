@@ -36,7 +36,7 @@ export default function Home() {
 					<div className={styles.controlsCol}>
 						<section className={styles.section}>
 							<h2 className={styles.sectionHeading}>选择样式</h2>
-							<StyleSelector selected={config.type} onSelect={(type) => setConfig((current) => selectWallpaperType(current, type))} />
+							<StyleSelector selected={config.type} theme={config.theme} onSelect={(type) => setConfig((current) => selectWallpaperType(current, type))} />
 						</section>
 
 						<section className={styles.section}>

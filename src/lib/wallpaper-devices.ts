@@ -47,3 +47,17 @@ export function resolveDevicePresetId(width: number, height: number, preferredId
 
 	return DEVICE_PRESETS.find((device) => device.width === width && device.height === height)?.id || "custom";
 }
+
+export type DeviceCategory = "iphone" | "android" | "desktop";
+
+export const DEVICE_CATEGORIES: { id: DeviceCategory; name: string }[] = [
+	{ id: "iphone", name: "iPhone" },
+	{ id: "android", name: "Android" },
+	{ id: "desktop", name: "桌面" },
+];
+
+export function getDeviceCategory(deviceId: string): DeviceCategory {
+	if (deviceId.startsWith("iphone")) return "iphone";
+	if (deviceId.startsWith("android")) return "android";
+	return "desktop";
+}

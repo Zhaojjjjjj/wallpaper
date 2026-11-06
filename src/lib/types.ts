@@ -1,4 +1,4 @@
-export const WALLPAPER_TYPES = ["year", "goal", "month", "week", "minimal", "life", "day"] as const;
+export const WALLPAPER_TYPES = ["year", "goal", "month", "week", "today", "minimal", "life", "day"] as const;
 
 export type WallpaperType = (typeof WALLPAPER_TYPES)[number];
 

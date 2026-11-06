@@ -37,7 +37,7 @@ function millisecondsUntilNextDayInTimeZone(instant: Date, timeZone: string): nu
 }
 
 export function millisecondsUntilWallpaperUpdate(type: WallpaperType, now: Date, timeZone?: string): number {
-	return type === "day"
+	return type === "day" || type === "today"
 		? millisecondsUntilNextMinute(toWallClockDate(now, timeZone))
 		: timeZone
 			? millisecondsUntilNextDayInTimeZone(now, timeZone)

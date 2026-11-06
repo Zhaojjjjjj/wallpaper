@@ -118,3 +118,21 @@ export function calculateLifeState(
 		weeksLived: Math.min(lifespanWeeks, Math.max(0, Math.floor(elapsedDays / 7))),
 	};
 }
+
+export function getDayOfYearInfo(now: Date): { index: number; total: number } {
+	const start = Date.UTC(now.getFullYear(), 0, 1) / DAY_MS;
+	const end = Date.UTC(now.getFullYear() + 1, 0, 1) / DAY_MS;
+	return { index: calendarDayNumber(now) - start, total: end - start };
+}
+
+export function getMonthInfo(now: Date): { daysInMonth: number; firstDayOffset: number; today: number } {
+	const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+	const firstWeekday = new Date(now.getFullYear(), now.getMonth(), 1).getDay();
+	// Monday-first calendar: Sunday (0) becomes column 6.
+	return { daysInMonth, firstDayOffset: (firstWeekday + 6) % 7, today: now.getDate() };
+}
+
+export function getDayProgress(now: Date): number {
+	const elapsedSeconds = now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds();
+	return clampProgress(elapsedSeconds / 86_400);
+}

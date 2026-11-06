@@ -43,7 +43,7 @@ function readPngDimensions(buffer) {
 try {
 	await waitForServer();
 
-	for (const type of ["year", "goal", "month", "week", "minimal", "life", "day"]) {
+	for (const type of ["year", "goal", "month", "week", "today", "minimal", "life", "day"]) {
 		const query = new URLSearchParams({
 			type,
 			width: "320",
@@ -83,7 +83,7 @@ try {
 		issues: ["irrelevant:goalName"],
 	});
 
-	console.log("PNG integration: 7/7 image types and invalid-query handling passed");
+	console.log("PNG integration: 8/8 image types and invalid-query handling passed");
 } catch (error) {
 	if (error instanceof Error) error.message += `\nProduction server logs:\n${logs}`;
 	throw error;

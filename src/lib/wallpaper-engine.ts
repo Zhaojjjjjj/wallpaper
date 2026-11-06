@@ -1,14 +1,33 @@
 import { WallpaperConfig } from "./types";
-import { calculateDayLayout, calculateLifeGrid } from "./wallpaper-layout";
 import {
+	TRACK_OPACITY,
+	calculateDayLayout,
+	calculateGoalLayout,
+	calculateLifeGrid,
+	calculateMinimalLayout,
+	calculateMonthLayout,
+	calculateTodayLayout,
+	calculateWeekLayout,
+	calculateYearLayout,
+} from "./wallpaper-layout";
+import {
+	getDayProgress,
 	calculateGoalProgress,
 	calculateLifeState,
-	calculateMonthProgress,
 	calculateYearProgress,
 	formatDateOnly,
+	getDayOfYearInfo,
 	parseDateOnly,
 	toWallClockDate,
 } from "./wallpaper-progress";
+
+const WEEKDAY_LETTERS = ["一", "二", "三", "四", "五", "六", "日"];
+
+interface TextOptions {
+	color?: string;
+	align?: CanvasTextAlign;
+	alpha?: number;
+}
 
 export class WallpaperEngine {
 	private ctx: CanvasRenderingContext2D;
@@ -29,11 +48,9 @@ export class WallpaperEngine {
 		try {
 			this.resetDrawingState();
 
-			// Clear background
 			this.ctx.fillStyle = this.config.theme.bg;
 			this.ctx.fillRect(0, 0, this.width, this.height);
 
-			// Render based on type
 			switch (this.config.type) {
 				case "year":
 					this.drawYear();
@@ -46,6 +63,9 @@ export class WallpaperEngine {
 					break;
 				case "week":
 					this.drawWeek();
+					break;
+				case "today":
+					this.drawToday();
 					break;
 				case "minimal":
 					this.drawMinimal();
@@ -60,7 +80,6 @@ export class WallpaperEngine {
 					this.drawText("未知的壁纸类型", this.width / 2, this.height / 2, 40);
 			}
 		} catch {
-			// Handle any rendering errors gracefully
 			this.ctx.fillStyle = "#000000";
 			this.ctx.fillRect(0, 0, this.width, this.height);
 			this.ctx.fillStyle = "#ffffff";
@@ -73,41 +92,178 @@ export class WallpaperEngine {
 
 	private drawYear() {
 		const now = new Date(this.now);
-		const progress = calculateYearProgress(now);
+		const layout = calculateYearLayout(this.width, this.height, now);
+		const { accent } = this.config.theme;
 
-		// Use legacy style logic: 10 rows x 13 cols = 130 cells.
-		const lCols = 13;
-		const lRows = 10;
+		this.drawText(String(now.getFullYear()), this.width / 2, layout.eyebrowY, Math.min(this.width, this.height) / 24, "600", 0.55);
+		this.drawText(`${Math.floor(calculateYearProgress(now) * 100)}%`, this.width / 2, layout.percentY, layout.percentSize, "800");
 
-		const cellSize = Math.min(this.width, this.height) / 28;
-		const gap = cellSize * 0.25;
-		const gridWidth = lCols * cellSize + (lCols - 1) * gap;
-		const gridHeight = lRows * cellSize + (lRows - 1) * gap;
-
-		const startX = (this.width - gridWidth) / 2;
-		const startY = (this.height - gridHeight) / 2 - this.height * 0.05;
-
-		const filledCount = Math.floor(progress * lCols * lRows);
-
-		for (let i = 0; i < lCols * lRows; i++) {
-			const row = Math.floor(i / lCols);
-			const col = i % lCols;
-			const x = startX + col * (cellSize + gap);
-			const y = startY + row * (cellSize + gap);
-
-			this.ctx.fillStyle = this.config.theme.accent;
-			this.ctx.globalAlpha = i < filledCount ? 1 : 0.2;
-
-			this.roundRect(x, y, cellSize, cellSize, cellSize * 0.2);
-			this.ctx.fill();
-		}
-
+		// Editorial hairline between the headline and the grid
+		this.ctx.fillStyle = accent;
+		this.ctx.globalAlpha = 0.22;
+		this.ctx.fillRect(layout.startX - layout.pitch / 2, layout.ruleY, layout.pitch * layout.cols, Math.max(1.5, layout.dotRadius * 0.22));
 		this.ctx.globalAlpha = 1;
 
-		// Text - better spacing
-		const textY = startY + gridHeight + this.height * 0.12;
-		this.drawText(`${Math.floor(progress * 100)}%`, this.width / 2, textY, Math.min(this.width, this.height) / 10, "bold");
-		this.drawText(String(now.getFullYear()), this.width / 2, textY + this.height * 0.08, Math.min(this.width, this.height) / 22, "500", 0.6);
+		for (let index = 0; index < layout.daysInYear; index++) {
+			const col = Math.floor(index / 7);
+			const row = index % 7;
+			const x = layout.startX + col * layout.pitch;
+			const y = layout.firstRowY + row * layout.pitch;
+
+			this.ctx.beginPath();
+			this.ctx.arc(x, y, layout.dotRadius, 0, Math.PI * 2);
+			this.ctx.fillStyle = accent;
+			this.ctx.globalAlpha = index < layout.dayIndex ? 1 : TRACK_OPACITY;
+			this.ctx.fill();
+			this.ctx.globalAlpha = 1;
+
+			if (index === layout.dayIndex) {
+				this.ctx.beginPath();
+				this.ctx.arc(x, y, layout.dotRadius * 1.9, 0, Math.PI * 2);
+				this.ctx.strokeStyle = accent;
+				this.ctx.lineWidth = Math.max(1.5, layout.dotRadius * 0.36);
+				this.ctx.stroke();
+			}
+		}
+
+		const daysLeft = layout.daysInYear - layout.dayIndex - 1;
+		this.drawText(`DAY ${layout.dayIndex + 1} OF ${layout.daysInYear} · ${daysLeft} LEFT`, this.width / 2, layout.captionY, Math.min(this.width, this.height) / 26, "500", 0.5);
+	}
+
+	private drawMonth() {
+		const now = new Date(this.now);
+		const layout = calculateMonthLayout(this.width, this.height, now);
+		const { accent, text } = this.config.theme;
+
+		this.drawText(now.toLocaleString("zh-CN", { month: "long" }), this.width / 2, layout.titleY, layout.titleSize, "800");
+		const monthEn = now.toLocaleString("en-US", { month: "long" }).toUpperCase();
+		this.drawText(`${monthEn} · ${now.getFullYear()}`, this.width / 2, layout.subtitleY, Math.min(this.width, this.height) / 26, "600", 0.5);
+
+		for (let col = 0; col < 7; col++) {
+			this.drawText(WEEKDAY_LETTERS[col], layout.startX + col * layout.pitch, layout.weekdayY, layout.pitch * 0.24, "500", 0.4);
+		}
+
+		// Today: filled disc behind the date number
+		const todayCell = layout.firstDayOffset + layout.today - 1;
+		const todayX = layout.startX + (todayCell % 7) * layout.pitch;
+		const todayY = layout.firstRowY + Math.floor(todayCell / 7) * layout.pitch;
+		this.ctx.beginPath();
+		this.ctx.arc(todayX, todayY, layout.pitch * 0.34, 0, Math.PI * 2);
+		this.ctx.fillStyle = accent;
+		this.ctx.fill();
+
+		for (let day = 1; day <= layout.daysInMonth; day++) {
+			const cell = layout.firstDayOffset + day - 1;
+			const x = layout.startX + (cell % 7) * layout.pitch;
+			const y = layout.firstRowY + Math.floor(cell / 7) * layout.pitch;
+			if (day === layout.today) {
+				this.drawText(String(day), x, y, layout.numberSize, "700", 1, { color: this.config.theme.bg });
+			} else if (day < layout.today) {
+				this.drawText(String(day), x, y, layout.numberSize, "500", 0.9);
+			} else {
+				this.drawText(String(day), x, y, layout.numberSize, "400", 0.38);
+			}
+		}
+
+		// Progress hairline under the calendar
+		const lineHeight = Math.max(3, Math.min(this.width, this.height) * 0.005);
+		this.ctx.fillStyle = accent;
+		this.ctx.globalAlpha = TRACK_OPACITY;
+		this.roundRect(layout.lineX, layout.lineY, layout.lineWidth, lineHeight, lineHeight / 2);
+		this.ctx.fill();
+		this.ctx.globalAlpha = 1;
+		this.roundRect(layout.lineX, layout.lineY, layout.lineWidth * (layout.today / layout.daysInMonth), lineHeight, lineHeight / 2);
+		this.ctx.fill();
+
+		this.drawText(`DAY ${layout.today} OF ${layout.daysInMonth}`, this.width / 2, layout.captionY, Math.min(this.width, this.height) / 26, "500", 0.5);
+		void text;
+	}
+
+	private drawWeek() {
+		const now = new Date(this.now);
+		const layout = calculateWeekLayout(this.width, this.height, now);
+		const { accent } = this.config.theme;
+
+		this.drawText("本周", this.width / 2, layout.eyebrowY, Math.min(this.width, this.height) / 24, "600", 0.55);
+		this.drawText(`周${WEEKDAY_LETTERS[layout.todayIndex]}`, this.width / 2, layout.titleY, layout.titleSize, "800");
+
+		for (let index = 0; index < 7; index++) {
+			const x = layout.startX + index * layout.pitch;
+			const y = layout.circleY;
+			const r = layout.circleRadius;
+
+			if (index < layout.todayIndex) {
+				this.ctx.beginPath();
+				this.ctx.arc(x, y, r, 0, Math.PI * 2);
+				this.ctx.fillStyle = accent;
+				this.ctx.fill();
+			} else if (index === layout.todayIndex) {
+				this.ctx.beginPath();
+				this.ctx.arc(x, y, r, 0, Math.PI * 2);
+				this.ctx.fillStyle = accent;
+				this.ctx.fill();
+				this.ctx.beginPath();
+				this.ctx.arc(x, y, r * 1.48, 0, Math.PI * 2);
+				this.ctx.strokeStyle = accent;
+				this.ctx.lineWidth = Math.max(1.5, r * 0.14);
+				this.ctx.stroke();
+			} else {
+				this.ctx.beginPath();
+				this.ctx.arc(x, y, r, 0, Math.PI * 2);
+				this.ctx.strokeStyle = accent;
+				this.ctx.globalAlpha = 0.38;
+				this.ctx.lineWidth = Math.max(1.5, r * 0.13);
+				this.ctx.stroke();
+				this.ctx.globalAlpha = 1;
+			}
+
+			const isToday = index === layout.todayIndex;
+			this.drawText(WEEKDAY_LETTERS[index], x, layout.letterY, layout.letterSize, isToday ? "700" : "500", isToday ? 1 : index < layout.todayIndex ? 0.75 : 0.35, isToday ? { color: accent } : undefined);
+		}
+	}
+
+	private drawToday() {
+		const now = new Date(this.now);
+		const layout = calculateTodayLayout(this.width, this.height, now);
+		const { accent } = this.config.theme;
+		const progress = getDayProgress(now);
+
+		this.drawText(`今日 · ${now.getMonth() + 1}月${now.getDate()}日`, this.width / 2, layout.eyebrowY, Math.min(this.width, this.height) / 24, "600", 0.55);
+		this.drawText(`${Math.floor(progress * 100)}%`, this.width / 2, layout.percentY, layout.percentSize, "800");
+
+		const step = (layout.tickEndX - layout.tickStartX) / 23;
+		for (let hour = 0; hour < 24; hour++) {
+			const x = layout.tickStartX + hour * step;
+			const isCurrent = hour === layout.hoursElapsed;
+			const height = isCurrent ? layout.tickTallHeight * 1.2 : hour % 6 === 0 ? layout.tickTallHeight : layout.tickBaseHeight;
+			this.ctx.fillStyle = accent;
+			this.ctx.globalAlpha = hour < layout.hoursElapsed || isCurrent ? 1 : 0.16;
+			this.roundRect(x - layout.tickWidth / 2, layout.ticksY - height / 2, layout.tickWidth, height, layout.tickWidth / 2);
+			this.ctx.fill();
+			this.ctx.globalAlpha = 1;
+		}
+
+		const elapsedSeconds = now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds();
+		const hoursLeft = Math.ceil((86_400 - elapsedSeconds) / 3600);
+		const timeText = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+		this.drawText(`${timeText} · 还剩约 ${hoursLeft} 小时`, this.width / 2, layout.captionY, Math.min(this.width, this.height) / 25, "500", 0.55);
+	}
+
+	private drawMinimal() {
+		const now = new Date(this.now);
+		const layout = calculateMinimalLayout(this.width, this.height);
+		const { accent } = this.config.theme;
+		const progress = calculateYearProgress(now);
+		const { index, total } = getDayOfYearInfo(now);
+		const left: TextOptions = { align: "left" };
+
+		this.drawText(String(now.getFullYear()), layout.marginX, layout.eyebrowY, Math.min(this.width, this.height) * 0.045, "600", 0.55, left);
+		this.drawText(`${Math.floor(progress * 100)}%`, layout.marginX, layout.percentY, layout.percentSize, "800", 1, left);
+
+		this.ctx.fillStyle = accent;
+		this.ctx.fillRect(layout.marginX, layout.ruleY, layout.ruleWidth, layout.ruleHeight);
+
+		this.drawText(`DAY ${index + 1} OF ${total}`, layout.marginX, layout.captionY, Math.min(this.width, this.height) * 0.04, "500", 0.5, left);
 	}
 
 	private drawLife() {
@@ -116,7 +272,6 @@ export class WallpaperEngine {
 			return;
 		}
 
-		// Validate birth date
 		if (!parseDateOnly(this.config.birthDate)) {
 			this.drawText("Invalid birth date", this.width / 2, this.height / 2, 40);
 			return;
@@ -128,38 +283,37 @@ export class WallpaperEngine {
 		const lifeState = calculateLifeState(this.config.birthDate, now, lifespanWeeks);
 		const weeksLived = lifeState.weeksLived;
 		const layout = calculateLifeGrid(this.width, this.height, lifespanWeeks);
+		const { accent } = this.config.theme;
+
+		this.drawText(`${((weeksLived / lifespanWeeks) * 100).toFixed(1)}%`, this.width / 2, layout.headerY, Math.min(this.width, this.height) * 0.085, "800");
 
 		for (let i = 0; i < lifespanWeeks; i++) {
 			const row = Math.floor(i / layout.cols);
 			const col = i % layout.cols;
-			const x = layout.startX + col * (layout.cellSize + layout.gap);
-			const y = layout.startY + row * (layout.cellSize + layout.gap);
-
-			this.ctx.fillStyle = this.config.theme.accent;
-
-			if (i < weeksLived) {
-				this.ctx.globalAlpha = 1;
-			} else if (lifeState.hasStarted && i === weeksLived) {
-				this.ctx.globalAlpha = 1;
-				this.ctx.shadowColor = this.config.theme.accent;
-				this.ctx.shadowBlur = layout.cellSize;
-			} else {
-				this.ctx.globalAlpha = 0.15;
-				this.ctx.shadowBlur = 0;
-			}
+			const x = layout.startX + col * (layout.cellSize + layout.gap) + layout.cellSize / 2;
+			const y = layout.startY + row * (layout.cellSize + layout.gap) + layout.cellSize / 2;
+			const isCurrent = lifeState.hasStarted && i === weeksLived;
 
 			this.ctx.beginPath();
-			this.ctx.arc(x + layout.cellSize / 2, y + layout.cellSize / 2, layout.cellSize / 2.5, 0, Math.PI * 2);
+			this.ctx.arc(x, y, layout.cellSize / 2.5, 0, Math.PI * 2);
+			this.ctx.fillStyle = accent;
+			this.ctx.globalAlpha = i < weeksLived || isCurrent ? 1 : 0.13;
 			this.ctx.fill();
-			this.ctx.shadowBlur = 0;
+			this.ctx.globalAlpha = 1;
+
+			if (isCurrent) {
+				this.ctx.beginPath();
+				this.ctx.arc(x, y, layout.cellSize * 0.85, 0, Math.PI * 2);
+				this.ctx.strokeStyle = accent;
+				this.ctx.lineWidth = Math.max(1.2, layout.cellSize * 0.16);
+				this.ctx.stroke();
+			}
 		}
 
-		this.ctx.globalAlpha = 1;
 		this.drawText(`${weeksLived.toLocaleString()} / ${lifespanWeeks.toLocaleString()} Weeks`, this.width / 2, layout.statsY, Math.min(this.width, this.height) / 40, "500", 0.6);
 	}
 
 	private drawGoal() {
-		// Use default target date (7 days from now) if not set
 		const targetDateStr = this.config.targetDate || this.getDefaultTargetDate();
 		const now = new Date(this.now);
 		const goalState = calculateGoalProgress(this.config.goalStartDate, targetDateStr, now);
@@ -169,140 +323,102 @@ export class WallpaperEngine {
 			return;
 		}
 
-		const centerX = this.width / 2;
-		const centerY = this.height / 2;
-		const radius = Math.min(this.width, this.height) / 6;
+		const layout = calculateGoalLayout(this.width, this.height);
+		const { accent } = this.config.theme;
 
-		// Ring
+		this.drawText(this.config.goalName || "我的目标", this.width / 2, layout.nameY, Math.min(this.width, this.height) * 0.052, "600", 0.9);
+
 		this.ctx.beginPath();
-		this.ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
-		this.ctx.strokeStyle = this.config.theme.accent;
-		this.ctx.globalAlpha = 0.2;
-		this.ctx.lineWidth = radius * 0.08;
+		this.ctx.arc(layout.centerX, layout.centerY, layout.radius, 0, Math.PI * 2);
+		this.ctx.strokeStyle = accent;
+		this.ctx.globalAlpha = 0.13;
+		this.ctx.lineWidth = layout.strokeWidth;
 		this.ctx.stroke();
 
 		this.ctx.beginPath();
 		const startAngle = -Math.PI / 2;
-		const endAngle = startAngle + Math.PI * 2 * goalState.progress;
-		this.ctx.arc(centerX, centerY, radius, startAngle, endAngle);
+		this.ctx.arc(layout.centerX, layout.centerY, layout.radius, startAngle, startAngle + Math.PI * 2 * goalState.progress);
 		this.ctx.globalAlpha = 1;
+		this.ctx.lineCap = "round";
 		this.ctx.stroke();
+		this.ctx.lineCap = "butt";
 
-		// Days number - larger and centered
-		this.drawText(goalState.daysLeft.toString(), centerX, centerY - radius * 0.1, radius * 0.9, "bold");
+		this.drawText(goalState.daysLeft.toString(), layout.centerX, layout.numberY, layout.radius * 0.85, "800");
+		this.drawText("剩余天数", layout.centerX, layout.labelY, layout.radius * 0.17, "500", 0.6);
 
-		// Days left label - below the number with proper spacing
-		this.drawText("剩余天数", centerX, centerY + radius * 0.5, radius * 0.18, "500", 0.7);
-
-		// Goal name - at the bottom with more spacing
-		const goalName = this.config.goalName || "我的目标";
-		this.drawText(goalName, centerX, this.height * 0.68, Math.min(this.width * 0.06, 60), "600");
+		const targetLabel = targetDateStr.replaceAll("-", ".");
+		const datesText = this.config.goalStartDate
+			? `${this.config.goalStartDate.replaceAll("-", ".")} → ${targetLabel}`
+			: `目标日期 ${targetLabel}`;
+		this.drawText(datesText, this.width / 2, layout.datesY, Math.min(this.width, this.height) / 25, "500", 0.55);
+		this.drawText(`已完成 ${Math.floor(goalState.progress * 100)}%`, this.width / 2, layout.percentY, Math.min(this.width, this.height) / 25, "600", 0.75);
 	}
 
 	private getDefaultTargetDate(): string {
 		const date = new Date(this.now);
-		date.setDate(date.getDate() + 7); // Default to 7 days from now
+		date.setDate(date.getDate() + 7);
 		return formatDateOnly(date);
-	}
-
-	private drawMonth() {
-		const now = new Date(this.now);
-		const percent = calculateMonthProgress(now);
-
-		// Draw a sleek bar
-		const barWidth = this.width * 0.75;
-		const barHeight = Math.min(this.height * 0.025, 50);
-		const x = (this.width - barWidth) / 2;
-		const y = this.height / 2;
-
-		this.ctx.fillStyle = this.config.theme.accent;
-		this.ctx.globalAlpha = 0.2;
-		this.roundRect(x, y, barWidth, barHeight, barHeight / 2);
-		this.ctx.fill();
-
-		this.ctx.globalAlpha = 1;
-		this.roundRect(x, y, barWidth * percent, barHeight, barHeight / 2);
-		this.ctx.fill();
-
-		// Better spacing for text
-		this.drawText(`${Math.floor(percent * 100)}%`, this.width / 2, y - this.height * 0.08, Math.min(this.width * 0.12, 100), "bold");
-		const monthName = now.toLocaleString("zh-CN", { month: "long" });
-		this.drawText(monthName, this.width / 2, y + this.height * 0.1, Math.min(this.width * 0.06, 50), "500", 0.7);
-	}
-
-	private drawWeek() {
-		// 7 dots
-		const now = new Date(this.now);
-		const day = now.getDay() || 7; // 1-7
-
-		const dotSize = Math.min(this.width / 12, this.height / 20);
-		const gap = dotSize * 0.6;
-		const totalW = 7 * dotSize + 6 * gap;
-		let startX = (this.width - totalW) / 2;
-		const centerY = this.height / 2;
-		this.ctx.shadowColor = this.config.theme.accent;
-
-		for (let i = 1; i <= 7; i++) {
-			this.ctx.fillStyle = this.config.theme.accent;
-			if (i <= day) {
-				this.ctx.globalAlpha = 1;
-				if (i === day) this.ctx.shadowBlur = dotSize * 0.3;
-			} else {
-				this.ctx.globalAlpha = 0.2;
-				this.ctx.shadowBlur = 0;
-			}
-
-			this.ctx.beginPath();
-			this.ctx.arc(startX + dotSize / 2, centerY, dotSize / 2.2, 0, Math.PI * 2);
-			this.ctx.fill();
-			this.ctx.shadowBlur = 0;
-
-			startX += dotSize + gap;
-		}
-
-		// Better spacing for label
-		this.drawText("本周", this.width / 2, centerY + dotSize + this.height * 0.06, Math.min(this.width * 0.06, 50), "500", 0.8);
 	}
 
 	private drawDay() {
 		const now = new Date(this.now);
 		const layout = calculateDayLayout(this.width, this.height);
+		const { accent, text } = this.config.theme;
+		const radius = layout.radius;
 
-		// Clock face
-		this.ctx.beginPath();
-		this.ctx.arc(layout.centerX, layout.centerY, layout.radius, 0, Math.PI * 2);
-		this.ctx.strokeStyle = this.config.theme.accent;
-		this.ctx.lineWidth = 4;
-		this.ctx.globalAlpha = 0.3;
-		this.ctx.stroke();
-
-		// Hands (Visual only)
-		const hourAngle = (((now.getHours() % 12) + now.getMinutes() / 60) * 30 * Math.PI) / 180; // 360/12 = 30
-		const minAngle = (now.getMinutes() * 6 * Math.PI) / 180; // 360/60 = 6
-
+		// Tick ring: fine minute ticks, stronger hour ticks, no bezel circle
+		for (let tick = 0; tick < 60; tick++) {
+			const isHour = tick % 5 === 0;
+			const angle = (tick * Math.PI) / 30;
+			const outer = radius;
+			const inner = radius - (isHour ? radius * 0.11 : radius * 0.05);
+			this.ctx.beginPath();
+			this.ctx.moveTo(layout.centerX + Math.sin(angle) * inner, layout.centerY - Math.cos(angle) * inner);
+			this.ctx.lineTo(layout.centerX + Math.sin(angle) * outer, layout.centerY - Math.cos(angle) * outer);
+			this.ctx.strokeStyle = text;
+			this.ctx.globalAlpha = isHour ? 0.9 : 0.3;
+			this.ctx.lineWidth = isHour ? Math.max(2, radius * 0.02) : Math.max(1, radius * 0.008);
+			this.ctx.stroke();
+		}
 		this.ctx.globalAlpha = 1;
-		this.drawHand(layout.centerX, layout.centerY, hourAngle, layout.radius * 0.5, Math.max(4, layout.radius * 0.025));
-		this.drawHand(layout.centerX, layout.centerY, minAngle, layout.radius * 0.8, Math.max(2, layout.radius * 0.0125));
+
+		const hourAngle = (((now.getHours() % 12) + now.getMinutes() / 60) * 30 * Math.PI) / 180;
+		const minAngle = (now.getMinutes() * 6 * Math.PI) / 180;
+		const secAngle = (now.getSeconds() * 6 * Math.PI) / 180;
+
+		this.drawHand(layout.centerX, layout.centerY, hourAngle, radius * 0.52, Math.max(3, radius * 0.045), text);
+		this.drawHand(layout.centerX, layout.centerY, minAngle, radius * 0.78, Math.max(2, radius * 0.028), text);
+		// Second hand in accent, with a short counterweight tail
+		this.ctx.save();
+		this.ctx.lineCap = "round";
+		this.ctx.translate(layout.centerX, layout.centerY);
+		this.ctx.rotate(secAngle);
+		this.ctx.beginPath();
+		this.ctx.moveTo(0, radius * 0.18);
+		this.ctx.lineTo(0, -radius * 0.86);
+		this.ctx.lineWidth = Math.max(1.5, radius * 0.012);
+		this.ctx.strokeStyle = accent;
+		this.ctx.stroke();
+		this.ctx.restore();
+
+		this.ctx.beginPath();
+		this.ctx.arc(layout.centerX, layout.centerY, radius * 0.038, 0, Math.PI * 2);
+		this.ctx.fillStyle = accent;
+		this.ctx.fill();
+		this.ctx.beginPath();
+		this.ctx.arc(layout.centerX, layout.centerY, radius * 0.015, 0, Math.PI * 2);
+		this.ctx.fillStyle = this.config.theme.bg;
+		this.ctx.fill();
 
 		this.drawText(
 			`${now.getHours().toString().padStart(2, "0")}:${now.getMinutes().toString().padStart(2, "0")}`,
 			layout.centerX,
 			layout.timeY,
 			layout.timeFontSize,
-			"bold"
+			"700"
 		);
-	}
-
-	private drawMinimal() {
-		const now = new Date(this.now);
-		const progress = calculateYearProgress(now);
-
-		const cx = this.width / 2;
-		const cy = this.height / 2;
-
-		// Better proportion for minimal style
-		this.drawText(`${Math.floor(progress * 100)}%`, cx, cy - this.height * 0.02, this.width * 0.3, "800");
-		this.drawText(String(now.getFullYear()), cx, cy + this.height * 0.12, Math.min(this.width * 0.06, 60), "300", 0.5);
+		const weekday = WEEKDAY_LETTERS[(now.getDay() + 6) % 7];
+		this.drawText(`${now.getMonth() + 1}月${now.getDate()}日 · 星期${weekday}`, layout.centerX, layout.dateY, Math.min(this.width, this.height) / 24, "500", 0.55);
 	}
 
 	// --- Helpers ---
@@ -318,7 +434,7 @@ export class WallpaperEngine {
 		this.ctx.clearRect(0, 0, this.width, this.height);
 	}
 
-	private drawHand(cx: number, cy: number, angle: number, length: number, width: number) {
+	private drawHand(cx: number, cy: number, angle: number, length: number, width: number, color: string) {
 		this.ctx.save();
 		this.ctx.lineCap = "round";
 		this.ctx.translate(cx, cy);
@@ -327,7 +443,7 @@ export class WallpaperEngine {
 		this.ctx.moveTo(0, 0);
 		this.ctx.lineTo(0, -length);
 		this.ctx.lineWidth = width;
-		this.ctx.strokeStyle = this.config.theme.accent;
+		this.ctx.strokeStyle = color;
 		this.ctx.stroke();
 		this.ctx.restore();
 	}
@@ -344,12 +460,11 @@ export class WallpaperEngine {
 		this.ctx.closePath();
 	}
 
-	private drawText(text: string, x: number, y: number, size: number, weight = "normal", alpha = 1) {
-		this.ctx.globalAlpha = alpha;
-		this.ctx.fillStyle = this.config.theme.text || this.config.theme.accent;
-		// Fallback font stack
-		this.ctx.font = `${weight} ${size}px Inter, -apple-system, sans-serif`;
-		this.ctx.textAlign = "center";
+	private drawText(text: string, x: number, y: number, size: number, weight = "normal", alpha = 1, options?: TextOptions) {
+		this.ctx.globalAlpha = options?.alpha ?? alpha;
+		this.ctx.fillStyle = options?.color ?? this.config.theme.text;
+		this.ctx.font = `${weight} ${size}px Inter, -apple-system, "PingFang SC", sans-serif`;
+		this.ctx.textAlign = options?.align ?? "center";
 		this.ctx.textBaseline = "middle";
 		this.ctx.fillText(text, x, y);
 		this.ctx.globalAlpha = 1;

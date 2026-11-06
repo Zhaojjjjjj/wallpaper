@@ -11,13 +11,14 @@ re-download it daily and your wallpaper always shows today's progress.
 
 | Type | What it shows |
 | --- | --- |
-| `year` | Year progress as a 13 × 10 grid with the elapsed percentage |
+| `year` | Year progress as a 53 × 7 day-dot grid (one column per week) with the elapsed percentage |
 | `goal` | Countdown ring to a target date, with an optional goal name |
-| `month` | Current month progress |
-| `week` | The seven days of this week |
+| `month` | A real calendar of the current month, today highlighted, with a progress hairline |
+| `week` | The seven days of this week as filled / ringed / outlined dots |
+| `today` | Day progress as a 24-hour tick scale, updated every minute |
 | `minimal` | Just the year progress percentage, nothing else |
 | `life` | A life calendar in weeks, from a birth date and expected lifespan |
-| `day` | An analog-style clock face for the current time |
+| `day` | A bezel-less analog clock face with minute/hour ticks and a second hand |
 
 ## Development
 
@@ -49,7 +50,7 @@ Supported query parameters:
 
 | Parameter | Description |
 | --- | --- |
-| `type` | `year`, `goal`, `month`, `week`, `minimal`, `life`, or `day` |
+| `type` | `year`, `goal`, `month`, `week`, `today`, `minimal`, `life`, or `day` |
 | `width`, `height` | Output dimensions; normalized to the global pixel budget |
 | `bg`, `accent`, `text` | Six-digit hexadecimal colors |
 | `birthDate` | Life-calendar birth date in `YYYY-MM-DD` format |
@@ -67,3 +68,4 @@ Example: an iPhone-sized year wallpaper at `GET /api/wallpaper.png?type=year&wid
 - The configurator preview and `/wallpaper` draw with the Canvas engine in `src/lib/wallpaper-engine.ts`; the preview raster is capped at 1080px on its longer edge, full resolution is rendered only by the direct endpoints.
 - The PNG endpoint composes the shared SVG scene (`src/lib/wallpaper-svg.ts`) and draws text layers with the bundled Noto Sans SC font via `next/og`, so arbitrary Chinese goal names render identically everywhere. The full font is kept on purpose: subsetting would break rare characters in user-supplied labels. Its SIL Open Font License is included at `src/app/api/wallpaper.png/NotoSansSC-LICENSE.txt`.
 - Query parsing, canonicalization, progress math and cache timing live in `src/lib/wallpaper-config.ts`, `wallpaper-progress.ts` and `wallpaper-time.ts`, shared by all three render paths.
+- All geometry (grid positions, type scale, ring sizes, tick marks) lives in `src/lib/wallpaper-layout.ts` and is consumed identically by the Canvas engine, the SVG renderer and the PNG text layers, so the three outputs cannot drift. The design language is consistent across styles: elapsed time is the accent color at full strength, today wears a ring, and the future sits at 14% opacity.
