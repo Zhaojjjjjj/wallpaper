@@ -1,24 +1,17 @@
 import { WallpaperConfig } from "./types";
 import {
+	FUTURE_OPACITY,
 	TRACK_OPACITY,
 	calculateDayLayout,
 	calculateGoalLayout,
-	calculateLifeGrid,
+	calculateLifeLayout,
 	calculateMinimalLayout,
 	calculateMonthLayout,
 	calculateTodayLayout,
 	calculateWeekLayout,
 	calculateYearLayout,
 } from "./wallpaper-layout";
-import {
-	calculateGoalProgress,
-	calculateLifeState,
-	calculateLifeWeeks,
-	calculateYearProgress,
-	formatDateOnly,
-	getDayOfYearInfo,
-	getDayProgress,
-} from "./wallpaper-progress";
+import { toWallClockDate } from "./wallpaper-progress";
 
 export interface WallpaperTextLayer {
 	text: string;
@@ -30,7 +23,9 @@ export interface WallpaperTextLayer {
 	/** Defaults to the theme text color. */
 	color?: string;
 	/** Defaults to centered text. */
-	align?: "left";
+	align?: "left" | "right";
+	/** Letter tracking in px. */
+	tracking?: number;
 }
 
 const WEEKDAY_LETTERS = ["一", "二", "三", "四", "五", "六", "日"];
@@ -57,307 +52,293 @@ export function svgToDataUrl(svg: string): string {
 }
 
 function textElement(layer: WallpaperTextLayer, defaultColor: string): string {
-	const anchor = layer.align === "left" ? "start" : "middle";
-	return `<text x="${layer.x}" y="${layer.y}" fill="${layer.color ?? defaultColor}" font-family="Arial, sans-serif" font-size="${layer.size}" font-weight="${layer.weight}" opacity="${layer.opacity}" text-anchor="${anchor}" dominant-baseline="middle">${escapeXml(layer.text)}</text>`;
-}
-
-export function getWallpaperTextLayers(config: WallpaperConfig, now = new Date()): WallpaperTextLayer[] {
-	const shortSide = Math.min(config.width, config.height);
-	const centerX = config.width / 2;
-
-	switch (config.type) {
-		case "year": {
-			const layout = calculateYearLayout(config.width, config.height, now);
-			const daysLeft = layout.daysInYear - layout.dayIndex - 1;
-			return [
-				{ text: String(now.getFullYear()), x: centerX, y: layout.eyebrowY, size: shortSide / 24, weight: 600, opacity: 0.55 },
-				{ text: `${Math.floor(calculateYearProgress(now) * 100)}%`, x: centerX, y: layout.percentY, size: layout.percentSize, weight: 800, opacity: 1 },
-				{ text: `DAY ${layout.dayIndex + 1} OF ${layout.daysInYear} · ${daysLeft} LEFT`, x: centerX, y: layout.captionY, size: shortSide / 26, weight: 500, opacity: 0.5 },
-			];
-		}
-		case "goal": {
-			const fallbackTarget = new Date(now);
-			fallbackTarget.setDate(fallbackTarget.getDate() + 7);
-			const targetDateStr = config.targetDate || formatDateOnly(fallbackTarget);
-			const state = calculateGoalProgress(config.goalStartDate, targetDateStr, now);
-			if (!state) return [{ text: "Invalid target date", x: centerX, y: config.height / 2, size: 40, weight: 400, opacity: 1 }];
-			const layout = calculateGoalLayout(config.width, config.height);
-			const targetLabel = targetDateStr.replaceAll("-", ".");
-			const datesText = config.goalStartDate
-				? `${config.goalStartDate.replaceAll("-", ".")} → ${targetLabel}`
-				: `目标日期 ${targetLabel}`;
-			return [
-				{ text: config.goalName || "我的目标", x: centerX, y: layout.nameY, size: shortSide * 0.052, weight: 600, opacity: 0.9 },
-				{ text: String(state.daysLeft), x: centerX, y: layout.numberY, size: layout.radius * 0.85, weight: 800, opacity: 1 },
-				{ text: "剩余天数", x: centerX, y: layout.labelY, size: layout.radius * 0.17, weight: 500, opacity: 0.6 },
-				{ text: datesText, x: centerX, y: layout.datesY, size: shortSide / 25, weight: 500, opacity: 0.55 },
-				{ text: `已完成 ${Math.floor(state.progress * 100)}%`, x: centerX, y: layout.percentY, size: shortSide / 25, weight: 600, opacity: 0.75 },
-			];
-		}
-		case "month": {
-			const layout = calculateMonthLayout(config.width, config.height, now);
-			const layers: WallpaperTextLayer[] = [
-				{ text: now.toLocaleString("zh-CN", { month: "long" }), x: centerX, y: layout.titleY, size: layout.titleSize, weight: 800, opacity: 1 },
-				{ text: `${now.toLocaleString("en-US", { month: "long" }).toUpperCase()} · ${now.getFullYear()}`, x: centerX, y: layout.subtitleY, size: shortSide / 26, weight: 600, opacity: 0.5 },
-			];
-			for (let col = 0; col < 7; col++) {
-				layers.push({ text: WEEKDAY_LETTERS[col], x: layout.startX + col * layout.pitch, y: layout.weekdayY, size: layout.pitch * 0.24, weight: 500, opacity: 0.4 });
-			}
-			for (let day = 1; day <= layout.daysInMonth; day++) {
-				const cell = layout.firstDayOffset + day - 1;
-				const x = layout.startX + (cell % 7) * layout.pitch;
-				const y = layout.firstRowY + Math.floor(cell / 7) * layout.pitch;
-				if (day === layout.today) {
-					layers.push({ text: String(day), x, y, size: layout.numberSize, weight: 700, opacity: 1, color: config.theme.bg });
-				} else if (day < layout.today) {
-					layers.push({ text: String(day), x, y, size: layout.numberSize, weight: 500, opacity: 0.9 });
-				} else {
-					layers.push({ text: String(day), x, y, size: layout.numberSize, weight: 400, opacity: 0.38 });
-				}
-			}
-			layers.push({ text: `DAY ${layout.today} OF ${layout.daysInMonth}`, x: centerX, y: layout.captionY, size: shortSide / 26, weight: 500, opacity: 0.5 });
-			return layers;
-		}
-		case "week": {
-			const layout = calculateWeekLayout(config.width, config.height, now);
-			const layers: WallpaperTextLayer[] = [
-				{ text: "本周", x: centerX, y: layout.eyebrowY, size: shortSide / 24, weight: 600, opacity: 0.55 },
-				{ text: `周${WEEKDAY_LETTERS[layout.todayIndex]}`, x: centerX, y: layout.titleY, size: layout.titleSize, weight: 800, opacity: 1 },
-			];
-			for (let index = 0; index < 7; index++) {
-				const isToday = index === layout.todayIndex;
-				layers.push({
-					text: WEEKDAY_LETTERS[index],
-					x: layout.startX + index * layout.pitch,
-					y: layout.letterY,
-					size: layout.letterSize,
-					weight: isToday ? 700 : 500,
-					opacity: isToday ? 1 : index < layout.todayIndex ? 0.75 : 0.35,
-					...(isToday ? { color: config.theme.accent } : {}),
-				});
-			}
-			return layers;
-		}
-		case "today": {
-			const layout = calculateTodayLayout(config.width, config.height, now);
-			const progress = getDayProgress(now);
-			const elapsedSeconds = now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds();
-			const hoursLeft = Math.ceil((86_400 - elapsedSeconds) / 3600);
-			const timeText = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
-			return [
-				{ text: `今日 · ${now.getMonth() + 1}月${now.getDate()}日`, x: centerX, y: layout.eyebrowY, size: shortSide / 24, weight: 600, opacity: 0.55 },
-				{ text: `${Math.floor(progress * 100)}%`, x: centerX, y: layout.percentY, size: layout.percentSize, weight: 800, opacity: 1 },
-				{ text: `${timeText} · 还剩约 ${hoursLeft} 小时`, x: centerX, y: layout.captionY, size: shortSide / 25, weight: 500, opacity: 0.55 },
-			];
-		}
-		case "minimal": {
-			const layout = calculateMinimalLayout(config.width, config.height);
-			const { index, total } = getDayOfYearInfo(now);
-			return [
-				{ text: String(now.getFullYear()), x: layout.marginX, y: layout.eyebrowY, size: shortSide * 0.045, weight: 600, opacity: 0.55, align: "left" },
-				{ text: `${Math.floor(calculateYearProgress(now) * 100)}%`, x: layout.marginX, y: layout.percentY, size: layout.percentSize, weight: 800, opacity: 1, align: "left" },
-				{ text: `DAY ${index + 1} OF ${total}`, x: layout.marginX, y: layout.captionY, size: shortSide * 0.04, weight: 500, opacity: 0.5, align: "left" },
-			];
-		}
-		case "life": {
-			if (!config.birthDate) return [{ text: "Please set birth date", x: centerX, y: config.height / 2, size: 40, weight: 400, opacity: 1 }];
-			const lifespanWeeks = Math.min(120, Math.max(1, config.lifespan || 80)) * 52;
-			const weeksLived = calculateLifeWeeks(config.birthDate, now, lifespanWeeks);
-			const layout = calculateLifeGrid(config.width, config.height, lifespanWeeks);
-			return [
-				{ text: `${((weeksLived / lifespanWeeks) * 100).toFixed(1)}%`, x: centerX, y: layout.headerY, size: shortSide * 0.085, weight: 800, opacity: 1 },
-				{ text: `${weeksLived.toLocaleString()} / ${lifespanWeeks.toLocaleString()} Weeks`, x: centerX, y: layout.statsY, size: shortSide / 40, weight: 500, opacity: 0.6 },
-			];
-		}
-		case "day": {
-			const layout = calculateDayLayout(config.width, config.height);
-			const weekday = WEEKDAY_LETTERS[(now.getDay() + 6) % 7];
-			return [
-				{ text: `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`, x: layout.centerX, y: layout.timeY, size: layout.timeFontSize, weight: 700, opacity: 1 },
-				{ text: `${now.getMonth() + 1}月${now.getDate()}日 · 星期${weekday}`, x: layout.centerX, y: layout.dateY, size: shortSide / 24, weight: 500, opacity: 0.55 },
-			];
-		}
-	}
+	const anchor = layer.align === "left" ? "start" : layer.align === "right" ? "end" : "middle";
+	const tracking = layer.tracking ? ` letter-spacing="${layer.tracking}"` : "";
+	return `<text x="${layer.x}" y="${layer.y}" fill="${layer.color ?? defaultColor}" font-family="Arial, sans-serif" font-size="${layer.size}" font-weight="${layer.weight}" opacity="${layer.opacity}" text-anchor="${anchor}" dominant-baseline="middle"${tracking}>${escapeXml(layer.text)}</text>`;
 }
 
 function circlePath(cx: number, cy: number, r: number): string {
-	return `M${cx - r} ${cy}a${r} ${r} 0 1 0 ${r * 2} 0a${r} ${r} 0 1 0 ${-r * 2} 0`;
+	return `M ${cx - r} ${cy} a ${r} ${r} 0 1 0 ${r * 2} 0 a ${r} ${r} 0 1 0 ${-r * 2} 0 `;
 }
 
-function renderYear(config: WallpaperConfig, now: Date): string {
-	const layout = calculateYearLayout(config.width, config.height, now);
-	const { accent } = config.theme;
-	const active: string[] = [];
-	const inactive: string[] = [];
-	let todayRing = "";
+function lineElement(x1: number, y1: number, x2: number, y2: number, color: string, opacity: number, width: number, round = false): string {
+	return `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${color}" stroke-opacity="${opacity}" stroke-width="${width}"${round ? ' stroke-linecap="round"' : ""}/>`;
+}
 
-	for (let index = 0; index < layout.daysInYear; index++) {
-		const col = Math.floor(index / 7);
-		const row = index % 7;
-		const x = layout.startX + col * layout.pitch;
-		const y = layout.firstRowY + row * layout.pitch;
-		(index < layout.dayIndex ? active : inactive).push(circlePath(x, y, layout.dotRadius));
-		if (index === layout.dayIndex) {
-			todayRing = `<circle cx="${x}" cy="${y}" r="${layout.dotRadius * 1.9}" fill="none" stroke="${accent}" stroke-width="${Math.max(1.5, layout.dotRadius * 0.36)}" class="today-ring"/>`;
-		}
+interface Parts {
+	layers: WallpaperTextLayer[];
+	shapes: string;
+}
+
+function eyebrowLayer(text: string, x: number, y: number, size: number, align?: "left" | "right", opacity = 0.55): WallpaperTextLayer {
+	return { text, x, y, size, weight: 600, opacity, align, tracking: size * 0.22 };
+}
+
+function footerLayers(left: string, right: string, frame: { marginX: number; rightX: number; footerY: number; footerSize: number }): WallpaperTextLayer[] {
+	return [
+		{ text: left, x: frame.marginX, y: frame.footerY, size: frame.footerSize, weight: 500, opacity: 0.5, align: "left", tracking: frame.footerSize * 0.14 },
+		{ text: right, x: frame.rightX, y: frame.footerY, size: frame.footerSize, weight: 500, opacity: 0.5, align: "right", tracking: frame.footerSize * 0.14 },
+	];
+}
+
+function yearParts(config: WallpaperConfig, now: Date): Parts {
+	const layout = calculateYearLayout(config, now);
+	const { accent } = config.theme;
+	const frame = layout.frame;
+	const layers: WallpaperTextLayer[] = [
+		eyebrowLayer(`${layout.year} · 年度进度`, frame.marginX, frame.eyebrowY, frame.eyebrowSize, "left"),
+		{ text: `${layout.percent}%`, x: frame.marginX, y: layout.heroY, size: layout.heroSize, weight: 300, opacity: 1, align: "left" },
+		{ text: String(layout.daysPassed), x: layout.statsX, y: layout.stat1Y, size: layout.statNumberSize, weight: 300, opacity: 1, align: "left" },
+		{ text: "DAYS PASSED · 已度过", x: layout.statsX, y: layout.stat1Y + layout.statNumberSize * 0.62, size: layout.statLabelSize, weight: 500, opacity: 0.5, align: "left", tracking: layout.statLabelSize * 0.14 },
+		{ text: String(layout.daysLeft), x: layout.statsX, y: layout.stat2Y, size: layout.statNumberSize, weight: 300, opacity: 1, align: "left" },
+		{ text: "DAYS LEFT · 还剩", x: layout.statsX, y: layout.stat2Y + layout.statNumberSize * 0.62, size: layout.statLabelSize, weight: 500, opacity: 0.5, align: "left", tracking: layout.statLabelSize * 0.14 },
+		...footerLayers(`DAY ${layout.todayIndex + 1} OF ${layout.totalDays}`, `${layout.year} · ${layout.percent}%`, frame),
+	];
+
+	let elapsed = "";
+	let future = "";
+	for (let i = 0; i < layout.totalDays; i++) {
+		const x = layout.gridStartX + (i % 7) * layout.pitch;
+		const y = layout.gridTop + Math.floor(i / 7) * layout.pitch;
+		if (i < layout.todayIndex) elapsed += circlePath(x, y, layout.dotRadius);
+		else if (i > layout.todayIndex) future += circlePath(x, y, layout.dotRadius);
 	}
-
-	const rule = `<rect x="${layout.startX - layout.pitch / 2}" y="${layout.ruleY}" width="${layout.pitch * layout.cols}" height="${Math.max(1.5, layout.dotRadius * 0.22)}" fill="${accent}" opacity="0.22"/>`;
-	return rule
-		+ (active.length ? `<path d="${active.join("")}" fill="${accent}"/>` : "")
-		+ (inactive.length ? `<path d="${inactive.join("")}" fill="${accent}" opacity="${TRACK_OPACITY}"/>` : "")
-		+ todayRing;
+	const todayX = layout.gridStartX + (layout.todayIndex % 7) * layout.pitch;
+	const todayY = layout.gridTop + Math.floor(layout.todayIndex / 7) * layout.pitch;
+	const shapes =
+		`<path d="${elapsed}" fill="${accent}" fill-opacity="0.92"/>` +
+		`<path d="${future}" fill="${accent}" fill-opacity="${FUTURE_OPACITY}"/>` +
+		`<circle cx="${todayX}" cy="${todayY}" r="${layout.dotRadius}" fill="${accent}"/>` +
+		`<circle class="today-ring" cx="${todayX}" cy="${todayY}" r="${layout.dotRadius * 2.1}" fill="none" stroke="${accent}" stroke-width="${Math.max(1.2, layout.pitch * 0.11)}"/>`;
+	return { layers, shapes };
 }
 
-function renderGoal(config: WallpaperConfig, now: Date): string {
-	const fallbackTarget = new Date(now);
-	fallbackTarget.setDate(fallbackTarget.getDate() + 7);
-	const state = calculateGoalProgress(config.goalStartDate, config.targetDate || formatDateOnly(fallbackTarget), now);
-	if (!state) return "";
-
-	const layout = calculateGoalLayout(config.width, config.height);
-	const circumference = Math.PI * 2 * layout.radius;
-	const progressLength = circumference * state.progress;
-
-	return `<circle cx="${layout.centerX}" cy="${layout.centerY}" r="${layout.radius}" fill="none" stroke="${config.theme.accent}" stroke-width="${layout.strokeWidth}" opacity="0.13"/>`
-		+ `<circle cx="${layout.centerX}" cy="${layout.centerY}" r="${layout.radius}" fill="none" stroke="${config.theme.accent}" stroke-width="${layout.strokeWidth}" stroke-linecap="round" stroke-dasharray="${progressLength} ${circumference}" transform="rotate(-90 ${layout.centerX} ${layout.centerY})"/>`;
-}
-
-function renderMonth(config: WallpaperConfig, now: Date): string {
-	const layout = calculateMonthLayout(config.width, config.height, now);
-	const { accent } = config.theme;
-	const todayCell = layout.firstDayOffset + layout.today - 1;
-	const todayX = layout.startX + (todayCell % 7) * layout.pitch;
-	const todayY = layout.firstRowY + Math.floor(todayCell / 7) * layout.pitch;
-	const lineHeight = Math.max(3, Math.min(config.width, config.height) * 0.005);
-
-	return `<circle cx="${todayX}" cy="${todayY}" r="${layout.pitch * 0.34}" fill="${accent}"/>`
-		+ `<rect x="${layout.lineX}" y="${layout.lineY}" width="${layout.lineWidth}" height="${lineHeight}" rx="${lineHeight / 2}" fill="${accent}" opacity="${TRACK_OPACITY}"/>`
-		+ `<rect x="${layout.lineX}" y="${layout.lineY}" width="${layout.lineWidth * (layout.today / layout.daysInMonth)}" height="${lineHeight}" rx="${lineHeight / 2}" fill="${accent}"/>`;
-}
-
-function renderWeek(config: WallpaperConfig, now: Date): string {
-	const layout = calculateWeekLayout(config.width, config.height, now);
-	const { accent } = config.theme;
-	const parts: string[] = [];
-
-	for (let index = 0; index < 7; index++) {
-		const x = layout.startX + index * layout.pitch;
-		const r = layout.circleRadius;
-		if (index < layout.todayIndex) {
-			parts.push(`<circle cx="${x}" cy="${layout.circleY}" r="${r}" fill="${accent}"/>`);
-		} else if (index === layout.todayIndex) {
-			parts.push(`<circle cx="${x}" cy="${layout.circleY}" r="${r}" fill="${accent}"/>`);
-			parts.push(`<circle cx="${x}" cy="${layout.circleY}" r="${r * 1.48}" fill="none" stroke="${accent}" stroke-width="${Math.max(1.5, r * 0.14)}" class="today-ring"/>`);
+function monthParts(config: WallpaperConfig, now: Date): Parts {
+	const layout = calculateMonthLayout(config, now);
+	const { accent, bg } = config.theme;
+	const frame = layout.frame;
+	const layers: WallpaperTextLayer[] = [
+		eyebrowLayer(`${layout.monthEn} · ${layout.year}`, config.width / 2, frame.eyebrowY, frame.eyebrowSize, undefined, 0.5),
+		{ text: layout.monthName, x: config.width / 2, y: layout.titleY, size: layout.titleSize, weight: 600, opacity: 1 },
+		...footerLayers(`DAY ${layout.today} OF ${layout.daysInMonth}`, `${layout.daysLeft} DAYS LEFT`, frame),
+	];
+	for (let col = 0; col < 7; col++) {
+		layers.push({ text: WEEKDAY_LETTERS[col], x: layout.startX + col * layout.pitch, y: layout.weekdayY, size: layout.pitch * 0.23, weight: 500, opacity: 0.42 });
+	}
+	let todayDisc = "";
+	for (let day = 1; day <= layout.daysInMonth; day++) {
+		const position = layout.firstDayOffset + day - 1;
+		const x = layout.startX + (position % 7) * layout.pitch;
+		const y = layout.firstRowY + Math.floor(position / 7) * layout.rowPitch;
+		if (day === layout.today) {
+			todayDisc = `<circle cx="${x}" cy="${y}" r="${layout.discRadius}" fill="${accent}"/>`;
+			layers.push({ text: String(day), x, y, size: layout.numberSize, weight: 600, opacity: 1, color: bg });
 		} else {
-			parts.push(`<circle cx="${x}" cy="${layout.circleY}" r="${r}" fill="none" stroke="${accent}" stroke-width="${Math.max(1.5, r * 0.13)}" opacity="0.38"/>`);
+			layers.push({ text: String(day), x, y, size: layout.numberSize, weight: 400, opacity: day < layout.today ? 0.88 : 0.34 });
 		}
 	}
-
-	return parts.join("");
+	const shapes =
+		`<rect x="${config.width / 2 - layout.ruleWidth / 2}" y="${layout.ruleY}" width="${layout.ruleWidth}" height="3" fill="${accent}"/>` +
+		lineElement(frame.marginX, layout.weekdayY + layout.pitch * 0.34, frame.rightX, layout.weekdayY + layout.pitch * 0.34, accent, TRACK_OPACITY, 1) +
+		todayDisc +
+		lineElement(frame.marginX, layout.progressY, frame.rightX, layout.progressY, accent, TRACK_OPACITY, 2) +
+		lineElement(frame.marginX, layout.progressY, frame.marginX + frame.contentWidth * (layout.today / layout.daysInMonth), layout.progressY, accent, 1, 2);
+	return { layers, shapes };
 }
 
-function renderToday(config: WallpaperConfig, now: Date): string {
-	const layout = calculateTodayLayout(config.width, config.height, now);
+function weekParts(config: WallpaperConfig, now: Date): Parts {
+	const layout = calculateWeekLayout(config, now);
+	const { accent, bg } = config.theme;
+	const frame = layout.frame;
+	const layers: WallpaperTextLayer[] = [
+		eyebrowLayer(`本周 · 第 ${layout.weekNumber} 周`, frame.marginX, frame.eyebrowY, frame.eyebrowSize, "left"),
+		eyebrowLayer(layout.rangeLabel, frame.rightX, frame.eyebrowY, frame.eyebrowSize, "right", 0.4),
+		{ text: `周${WEEKDAY_LETTERS[layout.todayIndex]}`, x: frame.marginX, y: layout.titleY, size: layout.titleSize, weight: 300, opacity: 1, align: "left" },
+		{ text: `${layout.percent}%`, x: frame.rightX, y: layout.titleY, size: layout.percentSize, weight: 300, opacity: 0.85, align: "right" },
+		...footerLayers(`WEEK ${layout.weekNumber}`, `${layout.todayIndex + 1} OF 7 DAYS`, frame),
+	];
+
+	const todayLeft = frame.marginX + layout.todayIndex * layout.colWidth;
+	let shapes = `<rect class="today-column" x="${todayLeft + 3}" y="${layout.stripTop}" width="${layout.colWidth - 6}" height="${layout.stripBottom - layout.stripTop}" rx="${Math.min(14, layout.colWidth * 0.16)}" fill="${accent}"/>`;
+	for (let i = 0; i < 6; i++) {
+		const x = frame.marginX + (i + 1) * layout.colWidth;
+		const span = layout.stripBottom - layout.stripTop;
+		shapes += lineElement(x, layout.stripTop + span * 0.14, x, layout.stripBottom - span * 0.14, accent, TRACK_OPACITY, 1);
+	}
+	layout.days.forEach((day, index) => {
+		const x = frame.marginX + (index + 0.5) * layout.colWidth;
+		const isToday = index === layout.todayIndex;
+		const state = isToday ? 1 : index < layout.todayIndex ? 0.85 : 0.38;
+		layers.push({ text: WEEKDAY_LETTERS[index], x, y: layout.letterY, size: layout.letterSize, weight: isToday ? 600 : 500, opacity: state, color: isToday ? bg : undefined });
+		layers.push({ text: String(day.dayOfMonth), x, y: layout.dateY, size: layout.dateSize, weight: isToday ? 600 : 500, opacity: state, color: isToday ? bg : undefined });
+	});
+	return { layers, shapes };
+}
+
+function todayParts(config: WallpaperConfig, now: Date): Parts {
+	const layout = calculateTodayLayout(config, now);
 	const { accent } = config.theme;
-	const step = (layout.tickEndX - layout.tickStartX) / 23;
-	const elapsed: string[] = [];
-	const future: string[] = [];
-
-	for (let hour = 0; hour < 24; hour++) {
-		const x = layout.tickStartX + hour * step - layout.tickWidth / 2;
-		const isCurrent = hour === layout.hoursElapsed;
-		const height = isCurrent ? layout.tickTallHeight * 1.2 : hour % 6 === 0 ? layout.tickTallHeight : layout.tickBaseHeight;
-		const rect = `<rect x="${x}" y="${layout.ticksY - height / 2}" width="${layout.tickWidth}" height="${height}" rx="${layout.tickWidth / 2}" fill="${accent}"/>`;
-		(hour < layout.hoursElapsed || isCurrent ? elapsed : future).push(rect);
-	}
-
-	return elapsed.join("") + (future.length ? `<g opacity="0.16">${future.join("")}</g>` : "");
-}
-
-function renderMinimal(config: WallpaperConfig): string {
-	const layout = calculateMinimalLayout(config.width, config.height);
-	return `<rect x="${layout.marginX}" y="${layout.ruleY}" width="${layout.ruleWidth}" height="${layout.ruleHeight}" fill="${config.theme.accent}"/>`;
-}
-
-function renderLife(config: WallpaperConfig, now: Date): string {
-	if (!config.birthDate) return "";
-
-	const lifespanWeeks = Math.min(120, Math.max(1, config.lifespan || 80)) * 52;
-	const lifeState = calculateLifeState(config.birthDate, now, lifespanWeeks);
-	const weeksLived = lifeState.weeksLived;
-	const layout = calculateLifeGrid(config.width, config.height, lifespanWeeks);
-	const activePaths: string[] = [];
-	const inactivePaths: string[] = [];
-	const radius = layout.cellSize / 2.5;
-	let currentRing = "";
-
-	for (let index = 0; index < lifespanWeeks; index++) {
-		const row = Math.floor(index / layout.cols);
-		const col = index % layout.cols;
-		const x = layout.startX + col * (layout.cellSize + layout.gap) + layout.cellSize / 2;
-		const y = layout.startY + row * (layout.cellSize + layout.gap) + layout.cellSize / 2;
-		const isCurrent = lifeState.hasStarted && index === weeksLived;
-		(index < weeksLived || isCurrent ? activePaths : inactivePaths).push(circlePath(x, y, radius));
-		if (isCurrent) {
-			currentRing = `<circle cx="${x}" cy="${y}" r="${layout.cellSize * 0.85}" fill="none" stroke="${config.theme.accent}" stroke-width="${Math.max(1.2, layout.cellSize * 0.16)}" class="today-ring"/>`;
+	const frame = layout.frame;
+	const currentHour = now.getHours();
+	const layers: WallpaperTextLayer[] = [
+		eyebrowLayer(`今日 · ${layout.dateLabel}`, config.width / 2, frame.eyebrowY, frame.eyebrowSize, undefined, 0.55),
+		{ text: layout.timeLabel, x: config.width / 2, y: layout.timeY, size: layout.timeSize, weight: 200, opacity: 1 },
+		{ text: `今日已过 ${layout.percent}%`, x: config.width / 2, y: layout.subY, size: layout.subSize, weight: 500, opacity: 0.6, tracking: layout.subSize * 0.1 },
+		...footerLayers(layout.fullDateLabel, `还剩约 ${layout.hoursLeft} 小时`, frame),
+	];
+	let elapsed = "";
+	let future = "";
+	let current = "";
+	for (let hour = 0; hour <= 24; hour++) {
+		const x = frame.marginX + (frame.contentWidth / 24) * hour;
+		const isCurrent = hour === currentHour;
+		const half = isCurrent ? layout.tickCurrent : hour % 6 === 0 ? layout.tickSix : layout.tickBase;
+		const segment = `M ${x} ${layout.tickY - half} L ${x} ${layout.tickY + half} `;
+		if (isCurrent) current = lineElement(x, layout.tickY - half, x, layout.tickY + half, accent, 1, 3);
+		else if (hour < currentHour) elapsed += segment;
+		else future += segment;
+		if (hour % 6 === 0) {
+			layers.push({ text: String(hour), x, y: layout.numbersY, size: layout.numberSize, weight: 500, opacity: 0.45 });
 		}
 	}
-
-	return (activePaths.length > 0 ? `<path d="${activePaths.join("")}" fill="${config.theme.accent}"/>` : "")
-		+ (inactivePaths.length > 0 ? `<path d="${inactivePaths.join("")}" fill="${config.theme.accent}" opacity="0.13"/>` : "")
-		+ currentRing;
+	const shapes =
+		`<path d="${elapsed}" stroke="${accent}" stroke-opacity="0.9" stroke-width="2"/>` +
+		`<path d="${future}" stroke="${accent}" stroke-opacity="0.18" stroke-width="2"/>` +
+		current;
+	return { layers, shapes };
 }
 
-function renderDay(config: WallpaperConfig, now: Date): string {
-	const layout = calculateDayLayout(config.width, config.height);
-	const { accent, text } = config.theme;
-	const radius = layout.radius;
-	const parts: string[] = [];
-
-	for (let tick = 0; tick < 60; tick++) {
-		const isHour = tick % 5 === 0;
-		const angle = (tick * Math.PI) / 30;
-		const inner = radius - (isHour ? radius * 0.11 : radius * 0.05);
-		parts.push(`<line x1="${layout.centerX + Math.sin(angle) * inner}" y1="${layout.centerY - Math.cos(angle) * inner}" x2="${layout.centerX + Math.sin(angle) * radius}" y2="${layout.centerY - Math.cos(angle) * radius}" stroke="${text}" stroke-width="${isHour ? Math.max(2, radius * 0.02) : Math.max(1, radius * 0.008)}" opacity="${isHour ? 0.9 : 0.3}"/>`);
+function goalParts(config: WallpaperConfig, now: Date): Parts {
+	const layout = calculateGoalLayout(config, now);
+	const { accent, bg } = config.theme;
+	const frame = layout.frame;
+	if (!layout.isValid) {
+		return { layers: [{ text: "请设置目标日期", x: config.width / 2, y: layout.errorY, size: Math.min(config.width, config.height) / 18, weight: 500, opacity: 0.7 }], shapes: "" };
 	}
+	const layers: WallpaperTextLayer[] = [
+		eyebrowLayer("目标倒计时 · COUNTDOWN", frame.marginX, frame.eyebrowY, frame.eyebrowSize, "left"),
+		{ text: layout.goalName, x: frame.marginX, y: layout.nameY, size: layout.nameSize, weight: 600, opacity: 1, align: "left" },
+		{ text: String(layout.daysLeft), x: frame.marginX, y: layout.heroY, size: layout.heroSize, weight: 300, opacity: 1, align: "left" },
+		{ text: "剩余天数 · DAYS LEFT", x: frame.marginX, y: layout.heroLabelY, size: layout.labelSize, weight: 500, opacity: 0.5, align: "left", tracking: layout.labelSize * 0.14 },
+		{ text: layout.startLabel, x: frame.marginX, y: layout.dateLabelY, size: layout.dateSize, weight: 500, opacity: 0.55, align: "left" },
+		{ text: layout.targetLabel, x: frame.rightX, y: layout.dateLabelY, size: layout.dateSize, weight: 500, opacity: 0.55, align: "right" },
+		...footerLayers(`已完成 ${Math.floor(layout.progress * 100)}%`, `${layout.elapsedDays} / ${layout.totalDays} DAYS`, frame),
+	];
+	const progressX = frame.marginX + frame.contentWidth * layout.progress;
+	let shapes = lineElement(frame.marginX, layout.lineY, frame.rightX, layout.lineY, accent, TRACK_OPACITY, 2);
+	if (layout.progress > 0) shapes += lineElement(frame.marginX, layout.lineY, progressX, layout.lineY, accent, 1, 2.5);
+	shapes += `<circle cx="${frame.marginX}" cy="${layout.lineY}" r="4" fill="${accent}"/>`;
+	shapes += `<circle cx="${frame.rightX}" cy="${layout.lineY}" r="6.5" fill="none" stroke="${accent}" stroke-width="2"/>`;
+	if (layout.progress > 0 && layout.progress < 1) {
+		shapes += `<circle cx="${progressX}" cy="${layout.lineY}" r="5.5" fill="${accent}" stroke="${bg}" stroke-width="2"/>`;
+	}
+	return { layers, shapes };
+}
 
+function lifeParts(config: WallpaperConfig, now: Date): Parts {
+	const layout = calculateLifeLayout(config, now);
+	const { accent } = config.theme;
+	const frame = layout.frame;
+	if (!layout.isValid) {
+		return { layers: [{ text: "请设置出生日期", x: config.width / 2, y: layout.errorY, size: Math.min(config.width, config.height) / 18, weight: 500, opacity: 0.7 }], shapes: "" };
+	}
+	const layers: WallpaperTextLayer[] = [
+		eyebrowLayer("生命日历", frame.marginX, frame.eyebrowY, frame.eyebrowSize, "left"),
+		eyebrowLayer("LIFE IN WEEKS", frame.rightX, frame.eyebrowY, frame.eyebrowSize, "right", 0.4),
+		{ text: `${layout.percent.toFixed(1)}%`, x: frame.marginX, y: layout.heroY, size: layout.heroSize, weight: 300, opacity: 1, align: "left" },
+		...footerLayers(`已度过 ${layout.weeksLived.toLocaleString("en-US")} 周`, `共 ${layout.totalWeeks.toLocaleString("en-US")} 周`, frame),
+	];
+	let elapsed = "";
+	let future = "";
+	for (let i = 0; i < layout.totalWeeks; i++) {
+		const x = layout.gridStartX + (i % layout.cols) * layout.pitch;
+		const y = layout.gridTop + Math.floor(i / layout.cols) * layout.rowPitch;
+		if (i < layout.currentWeekIndex) elapsed += circlePath(x, y, layout.dotRadius);
+		else if (i > layout.currentWeekIndex) future += circlePath(x, y, layout.dotRadius);
+	}
+	const currentX = layout.gridStartX + (layout.currentWeekIndex % layout.cols) * layout.pitch;
+	const currentY = layout.gridTop + Math.floor(layout.currentWeekIndex / layout.cols) * layout.rowPitch;
+	const shapes =
+		`<path d="${elapsed}" fill="${accent}" fill-opacity="0.92"/>` +
+		`<path d="${future}" fill="${accent}" fill-opacity="${FUTURE_OPACITY}"/>` +
+		`<circle cx="${currentX}" cy="${currentY}" r="${layout.dotRadius}" fill="${accent}"/>` +
+		`<circle class="today-ring" cx="${currentX}" cy="${currentY}" r="${layout.dotRadius * 2.1}" fill="none" stroke="${accent}" stroke-width="${Math.max(1.1, layout.pitch * 0.1)}"/>`;
+	return { layers, shapes };
+}
+
+function dayParts(config: WallpaperConfig, now: Date): Parts {
+	const layout = calculateDayLayout(config);
+	const { accent, text, bg } = config.theme;
+	const { centerX, centerY, radius } = layout;
+	const hours = now.getHours();
+	const minutes = now.getMinutes();
+	const seconds = now.getSeconds() + now.getMilliseconds() / 1000;
+	const pad = (value: number) => String(value).padStart(2, "0");
+	const weekday = WEEKDAY_LETTERS[(now.getDay() + 6) % 7];
+	const layers: WallpaperTextLayer[] = [
+		{ text: `${pad(hours)}:${pad(minutes)}`, x: centerX, y: layout.digitalY, size: layout.timeSize, weight: 300, opacity: 1 },
+		{ text: `${now.getMonth() + 1}月${now.getDate()}日 · 星期${weekday}`, x: centerX, y: layout.dateY, size: layout.dateSize, weight: 500, opacity: 0.55 },
+	];
+	const point = (angle: number, r: number) => `${centerX + Math.cos(angle) * r} ${centerY + Math.sin(angle) * r}`;
+	let shapes = "";
+	for (let i = 0; i < 60; i++) {
+		const angle = (i / 60) * Math.PI * 2;
+		const isHour = i % 5 === 0;
+		const [x1, y1] = point(angle, radius - (isHour ? radius * 0.11 : radius * 0.05)).split(" ");
+		const [x2, y2] = point(angle, radius).split(" ");
+		shapes += lineElement(Number(x1), Number(y1), Number(x2), Number(y2), text, isHour ? 0.9 : 0.25, isHour ? 3 : 1.5);
+	}
+	const numerals: [string, number][] = [["12", -Math.PI / 2], ["3", 0], ["6", Math.PI / 2], ["9", Math.PI]];
+	for (const [label, angle] of numerals) {
+		const [x, y] = point(angle, radius * 0.76).split(" ");
+		layers.push({ text: label, x: Number(x), y: Number(y), size: layout.numeralSize, weight: 500, opacity: 0.85 });
+	}
 	const hand = (angle: number, length: number, width: number, color: string, tail = 0) => {
-		const x2 = layout.centerX + Math.sin(angle) * length;
-		const y2 = layout.centerY - Math.cos(angle) * length;
-		const x1 = layout.centerX - Math.sin(angle) * tail;
-		const y1 = layout.centerY + Math.cos(angle) * tail;
-		return `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${color}" stroke-width="${width}" stroke-linecap="round"/>`;
+		const [x1, y1] = point(angle + Math.PI, tail).split(" ");
+		const [x2, y2] = point(angle, length).split(" ");
+		return lineElement(Number(x1), Number(y1), Number(x2), Number(y2), color, 1, width, true);
 	};
+	shapes += hand(((hours % 12) + minutes / 60) / 12 * Math.PI * 2 - Math.PI / 2, radius * 0.52, radius * 0.048, text);
+	shapes += hand((minutes + seconds / 60) / 60 * Math.PI * 2 - Math.PI / 2, radius * 0.78, radius * 0.03, text);
+	shapes += hand(seconds / 60 * Math.PI * 2 - Math.PI / 2, radius * 0.86, radius * 0.013, accent, radius * 0.2);
+	shapes += `<circle cx="${centerX}" cy="${centerY}" r="${radius * 0.038}" fill="${accent}"/><circle cx="${centerX}" cy="${centerY}" r="${radius * 0.016}" fill="${bg}"/>`;
+	return { layers, shapes };
+}
 
-	const hourAngle = ((now.getHours() % 12) + now.getMinutes() / 60) * Math.PI / 6;
-	const minuteAngle = now.getMinutes() * Math.PI / 30;
-	const secondAngle = now.getSeconds() * Math.PI / 30;
+function minimalParts(config: WallpaperConfig, now: Date): Parts {
+	const layout = calculateMinimalLayout(config, now);
+	const { accent } = config.theme;
+	const frame = layout.frame;
+	const layers: WallpaperTextLayer[] = [
+		{ text: String(layout.year), x: frame.marginX, y: frame.eyebrowY, size: Math.min(config.width * 0.034, config.height * 0.022), weight: 600, opacity: 0.9, align: "left", tracking: Math.min(config.width * 0.034, config.height * 0.022) * 0.22 },
+		eyebrowLayer(`DAY ${layout.todayIndex + 1} / ${layout.totalDays}`, frame.rightX, frame.eyebrowY, frame.eyebrowSize, "right", 0.5),
+		{ text: `${layout.percent}%`, x: frame.marginX, y: layout.heroY, size: layout.heroSize, weight: 200, opacity: 1, align: "left" },
+		{ text: `还剩 ${layout.daysLeft} 天`, x: frame.marginX, y: layout.captionY, size: layout.captionSize, weight: 500, opacity: 0.65, align: "left" },
+	];
+	const shapes = `<rect x="${frame.marginX}" y="${layout.ruleY}" width="${layout.ruleWidth}" height="${layout.ruleHeight}" fill="${accent}"/>`;
+	return { layers, shapes };
+}
 
-	parts.push(hand(hourAngle, radius * 0.52, Math.max(3, radius * 0.045), text));
-	parts.push(hand(minuteAngle, radius * 0.78, Math.max(2, radius * 0.028), text));
-	parts.push(hand(secondAngle, radius * 0.86, Math.max(1.5, radius * 0.012), accent, radius * 0.18));
-	parts.push(`<circle cx="${layout.centerX}" cy="${layout.centerY}" r="${radius * 0.038}" fill="${accent}"/>`);
-	parts.push(`<circle cx="${layout.centerX}" cy="${layout.centerY}" r="${radius * 0.015}" fill="${config.theme.bg}"/>`);
+function partsFor(config: WallpaperConfig, now: Date): Parts {
+	switch (config.type) {
+		case "year": return yearParts(config, now);
+		case "month": return monthParts(config, now);
+		case "week": return weekParts(config, now);
+		case "today": return todayParts(config, now);
+		case "goal": return goalParts(config, now);
+		case "life": return lifeParts(config, now);
+		case "day": return dayParts(config, now);
+		case "minimal": return minimalParts(config, now);
+	}
+}
 
-	return parts.join("");
+export function getWallpaperTextLayers(config: WallpaperConfig, now = new Date()): WallpaperTextLayer[] {
+	return partsFor(config, toWallClockDate(now, config.timeZone)).layers;
 }
 
 export function renderWallpaperSvg(config: WallpaperConfig, now = new Date(), includeText = true): string {
-	const rawContent = {
-		year: renderYear,
-		goal: renderGoal,
-		month: renderMonth,
-		week: renderWeek,
-		today: renderToday,
-		minimal: renderMinimal,
-		life: renderLife,
-		day: renderDay,
-	}[config.type](config, now);
-	const shapes = rawContent.replace(/<text\b[^>]*>[\s\S]*?<\/text>/g, "");
-	const text = includeText
-		? getWallpaperTextLayers(config, now).map((layer) => textElement(layer, config.theme.text)).join("")
-		: "";
-
+	const wallNow = toWallClockDate(now, config.timeZone);
+	const { layers, shapes } = partsFor(config, wallNow);
+	const text = includeText ? layers.map((layer) => textElement(layer, config.theme.text)).join("") : "";
 	return `<svg xmlns="http://www.w3.org/2000/svg" width="${config.width}" height="${config.height}" viewBox="0 0 ${config.width} ${config.height}"><rect width="100%" height="100%" fill="${config.theme.bg}"/>${shapes}${text}</svg>`;
 }

@@ -1,289 +1,419 @@
-import { getDayOfYearInfo, getMonthInfo } from "./wallpaper-progress";
+import { WallpaperConfig } from "./types";
+import {
+	calculateGoalProgress,
+	calculateLifeState,
+	calculateLifeWeeks,
+	getDayOfYearInfo,
+	getDayProgress,
+	getMonthInfo,
+	getWeekInfo,
+} from "./wallpaper-progress";
 
 /**
- * Shared geometry for every wallpaper style.
- *
- * The Canvas engine, the standalone SVG renderer and the PNG text layers all
- * read their positions from this module, so the three render paths cannot
- * drift apart. Design language: elapsed = accent at full strength, today =
- * accent with a ring, future = accent at TRACK_OPACITY; text follows the
- * type scale below with generous negative space.
+ * Poster system shared by the Canvas engine, the SVG renderer and the PNG
+ * text layers. Every style is composed on the same frame: a tracked small
+ * eyebrow near the top, one hero element, and a split footer baseline.
+ * Elapsed time is the accent at full strength, today wears a ring or a
+ * filled marker, and the future sits at low opacity.
  */
-export const TRACK_OPACITY = 0.14;
+export interface PosterFrame {
+	marginX: number;
+	rightX: number;
+	contentWidth: number;
+	eyebrowY: number;
+	eyebrowSize: number;
+	footerY: number;
+	footerSize: number;
+}
+
+function posterFrame(width: number, height: number): PosterFrame {
+	const marginX = width * 0.09;
+	return {
+		marginX,
+		rightX: width - marginX,
+		contentWidth: width - marginX * 2,
+		eyebrowY: height * 0.148,
+		eyebrowSize: Math.min(width * 0.031, height * 0.02),
+		footerY: height * 0.888,
+		footerSize: Math.min(width * 0.029, height * 0.019),
+	};
+}
+
+export const FUTURE_OPACITY = 0.22;
+export const TRACK_OPACITY = 0.16;
+
+export interface YearLayout {
+	frame: PosterFrame;
+	heroY: number;
+	heroSize: number;
+	gridStartX: number;
+	gridTop: number;
+	pitch: number;
+	dotRadius: number;
+	statsX: number;
+	statNumberSize: number;
+	statLabelSize: number;
+	stat1Y: number;
+	stat2Y: number;
+	percent: number;
+	daysPassed: number;
+	daysLeft: number;
+	todayIndex: number;
+	totalDays: number;
+	year: number;
+}
+
+export function calculateYearLayout(config: WallpaperConfig, now: Date): YearLayout {
+	const { width, height } = config;
+	const frame = posterFrame(width, height);
+	const progress = getDayProgressYear(now);
+	const { index, total } = getDayOfYearInfo(now);
+	const gridTop = height * 0.395;
+	const pitch = Math.min(((height * 0.845 - gridTop) / 52) * 1, frame.contentWidth * 0.028);
+	return {
+		frame,
+		heroY: height * 0.265,
+		heroSize: width * 0.225,
+		gridStartX: frame.marginX,
+		gridTop,
+		pitch,
+		dotRadius: pitch * 0.3,
+		statsX: frame.marginX + 7 * pitch + width * 0.075,
+		statNumberSize: width * 0.098,
+		statLabelSize: Math.min(width * 0.028, height * 0.018),
+		stat1Y: height * 0.5,
+		stat2Y: height * 0.665,
+		percent: Math.floor(progress * 100),
+		daysPassed: index,
+		daysLeft: total - index,
+		todayIndex: index,
+		totalDays: total,
+		year: now.getFullYear(),
+	};
+}
+
+function getDayProgressYear(now: Date): number {
+	const { index, total } = getDayOfYearInfo(now);
+	return total > 0 ? index / total : 0;
+}
+
+export interface MonthLayout {
+	frame: PosterFrame;
+	titleY: number;
+	titleSize: number;
+	ruleY: number;
+	ruleWidth: number;
+	pitch: number;
+	rowPitch: number;
+	startX: number;
+	weekdayY: number;
+	firstRowY: number;
+	numberSize: number;
+	discRadius: number;
+	progressY: number;
+	daysInMonth: number;
+	firstDayOffset: number;
+	today: number;
+	percent: number;
+	daysLeft: number;
+	month: number;
+	year: number;
+	monthName: string;
+	monthEn: string;
+}
+
+const MONTH_NAMES = ["一月", "二月", "三月", "四月", "五月", "六月", "七月", "八月", "九月", "十月", "十一月", "十二月"];
+const MONTH_EN = ["JANUARY", "FEBRUARY", "MARCH", "APRIL", "MAY", "JUNE", "JULY", "AUGUST", "SEPTEMBER", "OCTOBER", "NOVEMBER", "DECEMBER"];
+
+export function calculateMonthLayout(config: WallpaperConfig, now: Date): MonthLayout {
+	const { width, height } = config;
+	const frame = posterFrame(width, height);
+	const info = getMonthInfo(now);
+	const pitch = frame.contentWidth / 7;
+	const rowPitch = pitch * 0.92;
+	const firstRowY = height * 0.462;
+	return {
+		frame,
+		titleY: height * 0.248,
+		titleSize: width * 0.104,
+		ruleY: height * 0.308,
+		ruleWidth: width * 0.09,
+		pitch,
+		rowPitch,
+		startX: frame.marginX + pitch / 2,
+		weekdayY: height * 0.402,
+		firstRowY,
+		numberSize: pitch * 0.3,
+		discRadius: pitch * 0.4,
+		progressY: firstRowY + 5 * rowPitch + pitch * 0.68,
+		daysInMonth: info.daysInMonth,
+		firstDayOffset: info.firstDayOffset,
+		today: info.today,
+		percent: Math.floor((info.today / info.daysInMonth) * 100),
+		daysLeft: info.daysInMonth - info.today,
+		month: now.getMonth() + 1,
+		year: now.getFullYear(),
+		monthName: MONTH_NAMES[now.getMonth()],
+		monthEn: MONTH_EN[now.getMonth()],
+	};
+}
+
+export interface WeekLayout {
+	frame: PosterFrame;
+	titleY: number;
+	titleSize: number;
+	percentSize: number;
+	stripTop: number;
+	stripBottom: number;
+	colWidth: number;
+	letterY: number;
+	dateY: number;
+	letterSize: number;
+	dateSize: number;
+	percent: number;
+	todayIndex: number;
+	weekNumber: number;
+	days: { dayOfMonth: number; month: number }[];
+	rangeLabel: string;
+}
+
+export function calculateWeekLayout(config: WallpaperConfig, now: Date): WeekLayout {
+	const { width, height } = config;
+	const frame = posterFrame(width, height);
+	const info = getWeekInfo(now);
+	const first = info.days[0];
+	const last = info.days[6];
+	return {
+		frame,
+		titleY: height * 0.272,
+		titleSize: width * 0.155,
+		percentSize: width * 0.066,
+		stripTop: height * 0.398,
+		stripBottom: height * 0.568,
+		colWidth: frame.contentWidth / 7,
+		letterY: height * 0.452,
+		dateY: height * 0.524,
+		letterSize: Math.min(width * 0.033, height * 0.021),
+		dateSize: width * 0.05,
+		percent: Math.floor(((info.todayIndex + 1) / 7) * 100),
+		todayIndex: info.todayIndex,
+		weekNumber: info.weekNumber,
+		days: info.days,
+		rangeLabel: `${first.month}.${String(first.dayOfMonth).padStart(2, "0")} — ${last.month}.${String(last.dayOfMonth).padStart(2, "0")}`,
+	};
+}
+
+export interface TodayLayout {
+	frame: PosterFrame;
+	timeY: number;
+	timeSize: number;
+	subY: number;
+	subSize: number;
+	tickY: number;
+	tickBase: number;
+	tickSix: number;
+	tickCurrent: number;
+	numbersY: number;
+	numberSize: number;
+	percent: number;
+	hoursLeft: number;
+	timeLabel: string;
+	dateLabel: string;
+	fullDateLabel: string;
+}
+
+export function calculateTodayLayout(config: WallpaperConfig, now: Date): TodayLayout {
+	const { width, height } = config;
+	const frame = posterFrame(width, height);
+	const progress = getDayProgress(now);
+	const pad = (value: number) => String(value).padStart(2, "0");
+	return {
+		frame,
+		timeY: height * 0.302,
+		timeSize: width * 0.2,
+		subY: height * 0.378,
+		subSize: Math.min(width * 0.033, height * 0.021),
+		tickY: height * 0.525,
+		tickBase: height * 0.02,
+		tickSix: height * 0.031,
+		tickCurrent: height * 0.044,
+		numbersY: height * 0.578,
+		numberSize: Math.min(width * 0.026, height * 0.017),
+		percent: Math.floor(progress * 100),
+		hoursLeft: Math.max(0, Math.ceil(24 - (now.getHours() + now.getMinutes() / 60))),
+		timeLabel: `${pad(now.getHours())}:${pad(now.getMinutes())}`,
+		dateLabel: `${now.getMonth() + 1}月${now.getDate()}日`,
+		fullDateLabel: `${now.getFullYear()}.${pad(now.getMonth() + 1)}.${pad(now.getDate())}`,
+	};
+}
+
+export interface GoalLayout {
+	frame: PosterFrame;
+	nameY: number;
+	nameSize: number;
+	heroY: number;
+	heroSize: number;
+	heroLabelY: number;
+	labelSize: number;
+	lineY: number;
+	dateLabelY: number;
+	dateSize: number;
+	errorY: number;
+	isValid: boolean;
+	goalName: string;
+	daysLeft: number;
+	progress: number;
+	elapsedDays: number;
+	totalDays: number;
+	startLabel: string;
+	targetLabel: string;
+}
+
+function formatDotDate(value: string | undefined): string {
+	if (!value) return "";
+	const parts = value.split("-");
+	return parts.length === 3 ? `${parts[0]}.${parts[1]}.${parts[2]}` : value;
+}
+
+export function calculateGoalLayout(config: WallpaperConfig, now: Date): GoalLayout {
+	const { width, height } = config;
+	const frame = posterFrame(width, height);
+	const result = calculateGoalProgress(config.goalStartDate, config.targetDate, now);
+	return {
+		frame,
+		nameY: height * 0.222,
+		nameSize: width * 0.066,
+		heroY: height * 0.368,
+		heroSize: width * 0.29,
+		heroLabelY: height * 0.442,
+		labelSize: Math.min(width * 0.028, height * 0.018),
+		lineY: height * 0.578,
+		dateLabelY: height * 0.618,
+		dateSize: Math.min(width * 0.03, height * 0.019),
+		errorY: height * 0.5,
+		isValid: result !== null,
+		goalName: config.goalName?.trim() || "我的目标",
+		daysLeft: result?.daysLeft ?? 0,
+		progress: result?.progress ?? 0,
+		elapsedDays: result?.elapsedDays ?? 0,
+		totalDays: result?.totalDays ?? 0,
+		startLabel: formatDotDate(config.goalStartDate),
+		targetLabel: formatDotDate(config.targetDate),
+	};
+}
+
+export interface LifeLayout {
+	frame: PosterFrame;
+	heroY: number;
+	heroSize: number;
+	gridStartX: number;
+	gridTop: number;
+	pitch: number;
+	rowPitch: number;
+	dotRadius: number;
+	cols: number;
+	rows: number;
+	errorY: number;
+	isValid: boolean;
+	percent: number;
+	weeksLived: number;
+	totalWeeks: number;
+	currentWeekIndex: number;
+}
+
+export function calculateLifeLayout(config: WallpaperConfig, now: Date): LifeLayout {
+	const { width, height } = config;
+	const frame = posterFrame(width, height);
+	const lifespan = config.lifespan ?? 80;
+	const totalWeeks = lifespan * 52;
+	const state = calculateLifeState(config.birthDate, now, totalWeeks);
+	const weeksLived = calculateLifeWeeks(config.birthDate, now, totalWeeks);
+	const cols = 52;
+	const rows = Math.ceil(totalWeeks / cols);
+	const gridTop = height * 0.318;
+	const pitch = frame.contentWidth / (cols - 1);
+	const rowPitch = Math.min(pitch, (height * 0.828 - gridTop) / Math.max(1, rows - 1));
+	return {
+		frame,
+		heroY: height * 0.232,
+		heroSize: width * 0.148,
+		gridStartX: frame.marginX,
+		gridTop,
+		pitch,
+		rowPitch,
+		dotRadius: Math.min(pitch, rowPitch) * 0.3,
+		cols,
+		rows,
+		errorY: height * 0.5,
+		isValid: state.hasStarted,
+		percent: totalWeeks > 0 ? (weeksLived / totalWeeks) * 100 : 0,
+		weeksLived,
+		totalWeeks,
+		currentWeekIndex: weeksLived,
+	};
+}
 
 export interface DayLayout {
 	centerX: number;
 	centerY: number;
 	radius: number;
-	timeY: number;
-	timeFontSize: number;
+	numeralSize: number;
+	digitalY: number;
+	timeSize: number;
 	dateY: number;
+	dateSize: number;
 }
 
-export interface LifeGridLayout {
-	cols: number;
-	rows: number;
-	cellSize: number;
-	gap: number;
-	gridWidth: number;
-	gridHeight: number;
-	startX: number;
-	startY: number;
-	headerY: number;
-	statsY: number;
-}
-
-export interface YearLayout {
-	cols: number;
-	rows: number;
-	pitch: number;
-	dotRadius: number;
-	startX: number;
-	firstRowY: number;
-	dayIndex: number;
-	daysInYear: number;
-	eyebrowY: number;
-	percentY: number;
-	percentSize: number;
-	ruleY: number;
-	captionY: number;
-}
-
-export interface MonthLayout {
-	cols: number;
-	rows: number;
-	pitch: number;
-	startX: number;
-	firstRowY: number;
-	weekdayY: number;
-	numberSize: number;
-	today: number;
-	daysInMonth: number;
-	firstDayOffset: number;
-	titleY: number;
-	subtitleY: number;
-	titleSize: number;
-	lineX: number;
-	lineWidth: number;
-	lineY: number;
-	captionY: number;
-}
-
-export interface WeekLayout {
-	pitch: number;
-	startX: number;
-	circleY: number;
-	circleRadius: number;
-	letterY: number;
-	letterSize: number;
-	eyebrowY: number;
-	titleY: number;
-	titleSize: number;
-	todayIndex: number; // 0 = Monday
-}
-
-export interface GoalLayout {
-	centerX: number;
-	centerY: number;
-	radius: number;
-	strokeWidth: number;
-	nameY: number;
-	numberY: number;
-	labelY: number;
-	datesY: number;
-	percentY: number;
-}
-
-export interface TodayLayout {
-	eyebrowY: number;
-	percentY: number;
-	percentSize: number;
-	ticksY: number;
-	tickStartX: number;
-	tickEndX: number;
-	tickWidth: number;
-	tickBaseHeight: number;
-	tickTallHeight: number;
-	captionY: number;
-	hoursElapsed: number;
+export function calculateDayLayout(config: WallpaperConfig): DayLayout {
+	const { width, height } = config;
+	const shortSide = Math.min(width, height);
+	const radius = shortSide * 0.335;
+	const centerY = height * 0.432;
+	return {
+		centerX: width / 2,
+		centerY,
+		radius,
+		numeralSize: radius * 0.17,
+		digitalY: centerY + radius + height * 0.088,
+		timeSize: width * 0.082,
+		dateY: centerY + radius + height * 0.142,
+		dateSize: Math.min(width * 0.032, height * 0.02),
+	};
 }
 
 export interface MinimalLayout {
-	marginX: number;
-	eyebrowY: number;
-	percentY: number;
-	percentSize: number;
+	frame: PosterFrame;
+	heroY: number;
+	heroSize: number;
 	ruleY: number;
 	ruleWidth: number;
 	ruleHeight: number;
 	captionY: number;
+	captionSize: number;
+	percent: number;
+	daysLeft: number;
+	todayIndex: number;
+	totalDays: number;
+	year: number;
 }
 
-export function calculateDayLayout(width: number, height: number): DayLayout {
-	const shortSide = Math.min(width, height);
-	const radius = shortSide * 0.3;
-	const centerY = height * 0.44;
-	const timeFontSize = shortSide / 14;
-	const timeY = centerY + radius + shortSide * 0.07;
-
-	return {
-		centerX: width / 2,
-		centerY,
-		radius,
-		timeY,
-		timeFontSize,
-		dateY: timeY + timeFontSize * 1.1,
-	};
-}
-
-export function calculateLifeGrid(width: number, height: number, totalCells: number): LifeGridLayout {
-	const cols = 52;
-	const rows = Math.max(1, Math.ceil(totalCells / cols));
-	const gapRatio = 0.2;
-	const horizontalPadding = width * 0.06;
-	const gridTop = height * 0.16;
-	const gridBottom = height * 0.845;
-	const availableWidth = width - horizontalPadding * 2;
-	const availableHeight = gridBottom - gridTop;
-	const widthUnits = cols + (cols - 1) * gapRatio;
-	const heightUnits = rows + (rows - 1) * gapRatio;
-	const cellSize = Math.min(availableWidth / widthUnits, availableHeight / heightUnits);
-	const gap = cellSize * gapRatio;
-	const gridWidth = cols * cellSize + (cols - 1) * gap;
-	const gridHeight = rows * cellSize + (rows - 1) * gap;
-
-	return {
-		cols,
-		rows,
-		cellSize,
-		gap,
-		gridWidth,
-		gridHeight,
-		startX: (width - gridWidth) / 2,
-		startY: gridTop + (availableHeight - gridHeight) / 2,
-		headerY: height * 0.1,
-		statsY: height * 0.905,
-	};
-}
-
-export function calculateYearLayout(width: number, height: number, now: Date): YearLayout {
+export function calculateMinimalLayout(config: WallpaperConfig, now: Date): MinimalLayout {
+	const { width, height } = config;
+	const frame = posterFrame(width, height);
 	const { index, total } = getDayOfYearInfo(now);
-	const cols = 53;
-	const rows = 7;
-	const pitch = (width * 0.86) / cols;
-	const gridWidth = cols * pitch;
-	const firstRowY = height * 0.445;
-
 	return {
-		cols,
-		rows,
-		pitch,
-		dotRadius: pitch * 0.3,
-		startX: (width - gridWidth) / 2 + pitch / 2,
-		firstRowY,
-		dayIndex: index,
-		daysInYear: total,
-		eyebrowY: height * 0.278,
-		percentY: height * 0.345,
-		percentSize: Math.min(width, height) * 0.17,
-		ruleY: height * 0.408,
-		captionY: firstRowY + (rows - 1) * pitch + height * 0.052,
-	};
-}
-
-export function calculateMonthLayout(width: number, height: number, now: Date): MonthLayout {
-	const info = getMonthInfo(now);
-	const cols = 7;
-	const rows = Math.ceil((info.firstDayOffset + info.daysInMonth) / cols);
-	const pitch = (width * 0.8) / cols;
-	const gridWidth = cols * pitch;
-	const startX = (width - gridWidth) / 2 + pitch / 2;
-	const firstRowY = height * 0.452;
-
-	return {
-		cols,
-		rows,
-		pitch,
-		startX,
-		firstRowY,
-		weekdayY: firstRowY - pitch * 0.68,
-		numberSize: pitch * 0.32,
-		today: info.today,
-		daysInMonth: info.daysInMonth,
-		firstDayOffset: info.firstDayOffset,
-		titleY: height * 0.3,
-		subtitleY: height * 0.352,
-		titleSize: Math.min(width, height) * 0.115,
-		lineX: startX - pitch / 2,
-		lineWidth: gridWidth,
-		lineY: firstRowY + (rows - 1) * pitch + pitch * 0.72,
-		captionY: firstRowY + (rows - 1) * pitch + pitch * 0.72 + height * 0.042,
-	};
-}
-
-export function calculateWeekLayout(width: number, height: number, now: Date): WeekLayout {
-	const pitch = (width * 0.84) / 7;
-	const gridWidth = 7 * pitch;
-
-	return {
-		pitch,
-		startX: (width - gridWidth) / 2 + pitch / 2,
-		circleY: height * 0.55,
-		circleRadius: pitch * 0.3,
-		letterY: height * 0.55 + pitch * 0.3 + height * 0.04,
-		letterSize: Math.min(width, height) / 21,
-		eyebrowY: height * 0.378,
-		titleY: height * 0.445,
-		titleSize: Math.min(width, height) * 0.105,
-		todayIndex: (now.getDay() + 6) % 7,
-	};
-}
-
-export function calculateGoalLayout(width: number, height: number): GoalLayout {
-	const shortSide = Math.min(width, height);
-	const radius = shortSide / 5.2;
-	const centerY = height * 0.52;
-
-	return {
-		centerX: width / 2,
-		centerY,
-		radius,
-		strokeWidth: radius * 0.055,
-		nameY: height * 0.315,
-		numberY: centerY - radius * 0.08,
-		labelY: centerY + radius * 0.52,
-		datesY: height * 0.685,
-		percentY: height * 0.728,
-	};
-}
-
-export function calculateTodayLayout(width: number, height: number, now: Date): TodayLayout {
-	const shortSide = Math.min(width, height);
-
-	return {
-		eyebrowY: height * 0.332,
-		percentY: height * 0.415,
-		percentSize: shortSide * 0.17,
-		ticksY: height * 0.545,
-		tickStartX: width * 0.1,
-		tickEndX: width * 0.9,
-		tickWidth: Math.max(2, shortSide * 0.005),
-		tickBaseHeight: shortSide * 0.05,
-		tickTallHeight: shortSide * 0.09,
-		captionY: height * 0.64,
-		hoursElapsed: now.getHours(),
-	};
-}
-
-export function calculateMinimalLayout(width: number, height: number): MinimalLayout {
-	return {
-		marginX: width * 0.1,
-		eyebrowY: height * 0.432,
-		percentY: height * 0.505,
-		percentSize: width * 0.315,
-		ruleY: height * 0.605,
-		ruleWidth: width * 0.26,
-		ruleHeight: Math.max(2, Math.min(width, height) * 0.007),
-		captionY: height * 0.652,
+		frame,
+		heroY: height * 0.462,
+		heroSize: width * 0.325,
+		ruleY: height * 0.552,
+		ruleWidth: width * 0.155,
+		ruleHeight: Math.max(3, Math.min(width, height) * 0.006),
+		captionY: height * 0.608,
+		captionSize: Math.min(width * 0.036, height * 0.023),
+		percent: Math.floor((index / total) * 100),
+		daysLeft: total - index,
+		todayIndex: index,
+		totalDays: total,
+		year: now.getFullYear(),
 	};
 }

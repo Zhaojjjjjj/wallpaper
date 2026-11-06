@@ -14,7 +14,7 @@ import {
 	resolveWallpaperNumberDraft,
 	selectWallpaperType,
 } from "./wallpaper-config";
-import { calculateDayLayout, calculateLifeGrid } from "./wallpaper-layout";
+import { calculateDayLayout, calculateLifeLayout } from "./wallpaper-layout";
 import {
 	calculateGoalProgress,
 	calculateLifeState,
@@ -203,13 +203,13 @@ test("every supported wallpaper type renders finite standalone SVG", () => {
 	}
 });
 
-test("SVG preserves Canvas today-ring and rounded clock-hand styling", () => {
+test("SVG preserves Canvas today markers and rounded clock-hand styling", () => {
 	const base = parseWallpaperConfig(new URLSearchParams());
 	const weekSvg = renderWallpaperSvg({ ...base, type: "week" }, new Date(2026, 6, 20));
 	const lifeSvg = renderWallpaperSvg({ ...base, type: "life", birthDate: "1990-01-01" }, new Date(2026, 6, 20));
 	const daySvg = renderWallpaperSvg({ ...base, type: "day" }, new Date(2026, 6, 20));
 
-	assert.match(weekSvg, /class="today-ring"/);
+	assert.match(weekSvg, /class="today-column"/);
 	assert.match(lifeSvg, /class="today-ring"/);
 	assert.doesNotMatch(weekSvg, /<filter/);
 	assert.doesNotMatch(lifeSvg, /<filter/);
@@ -222,7 +222,7 @@ test("life SVG uses bounded path nodes instead of thousands of circle elements",
 	};
 	const svg = renderWallpaperSvg(config, new Date(2026, 6, 18));
 
-	assert.ok((svg.match(/<circle\b/g) || []).length <= 1, "only the current-week ring may be a circle element");
+	assert.ok((svg.match(/<circle\b/g) || []).length <= 2, "only the current-week dot and its ring may be circle elements");
 	assert.ok((svg.match(/<path\b/g) || []).length <= 2);
 });
 
@@ -291,8 +291,9 @@ test("Canvas year variants use calendar progress across DST transitions", () => 
 				fillStyle: "", font: "", globalAlpha: 1, globalCompositeOperation: "source-over",
 				lineCap: "butt", lineJoin: "miter", shadowBlur: 0, shadowColor: "transparent",
 				textAlign: "center", textBaseline: "middle",
-				arcTo() {}, beginPath() {}, clearRect() {}, closePath() {}, fill() {}, fillRect() {},
-				fillText(value) { text.push(value); }, moveTo() {}, setTransform() {},
+				arc() {}, arcTo() {},
+		roundRect() {}, beginPath() {}, clearRect() {}, closePath() {}, fill() {}, fillRect() {},
+				fillText(value) { text.push(value); }, lineTo() {}, moveTo() {}, restore() {}, rotate() {}, save() {}, setTransform() {}, stroke() {}, translate() {},
 			};
 			const config = { ...parseWallpaperConfig(new URLSearchParams()), type };
 			new WallpaperEngine(context, config, new Date(2026, 2, 11, 8, 24)).render();
@@ -312,10 +313,12 @@ test("Canvas year variants use calendar progress across DST transitions", () => 
 test("goal progress uses the configured start and target dates", () => {
 	const state = calculateGoalProgress("2026-01-01", "2026-01-11", new Date(2026, 0, 6, 12));
 
-	assert.deepEqual(state, { daysLeft: 5, progress: 0.5 });
+	assert.deepEqual(state, { daysLeft: 5, progress: 0.5, totalDays: 10, elapsedDays: 5 });
 	assert.deepEqual(calculateGoalProgress(undefined, "2026-01-11", new Date(2026, 0, 6, 12)), {
 		daysLeft: 5,
 		progress: 0,
+		totalDays: 0,
+		elapsedDays: 0,
 	});
 });
 
@@ -384,22 +387,25 @@ test("Canvas scheduling follows the configured time-zone boundary", () => {
 
 test("day wallpaper geometry stays inside portrait and landscape canvases", () => {
 	for (const [width, height] of [[1179, 2556], [3840, 2160]] as const) {
-		const layout = calculateDayLayout(width, height);
+		const config = parseWallpaperConfig(new URLSearchParams({ type: "day", width: String(width), height: String(height) }));
+		const layout = calculateDayLayout(config);
 
 		assert.ok(layout.centerY - layout.radius >= 0);
 		assert.ok(layout.centerY + layout.radius <= height);
-		assert.ok(layout.timeY + layout.timeFontSize / 2 <= height);
+		assert.ok(layout.digitalY + layout.timeSize / 2 <= height);
+		assert.ok(layout.dateY <= height);
 	}
 });
 
-test("default life grid reserves canvas space for every week and its stats", () => {
-	const layout = calculateLifeGrid(1179, 2556, 80 * 52);
+test("default life grid reserves canvas space for every week and its footer", () => {
+	const config = parseWallpaperConfig(new URLSearchParams({ type: "life", width: "1179", height: "2556", birthDate: "1995-06-15", lifespan: "80" }));
+	const layout = calculateLifeLayout(config, new Date(2026, 2, 11, 8, 24));
 
-	assert.ok(layout.startX >= 0);
-	assert.ok(layout.startY >= 0);
-	assert.ok(layout.startX + layout.gridWidth <= 1179);
-	assert.ok(layout.startY + layout.gridHeight < layout.statsY);
-	assert.ok(layout.statsY <= 2556);
+	assert.ok(layout.gridStartX >= 0);
+	assert.ok(layout.gridTop >= 0);
+	assert.ok(layout.gridStartX + (layout.cols - 1) * layout.pitch <= 1179);
+	assert.ok(layout.gridTop + (layout.rows - 1) * layout.rowPitch < layout.frame.footerY);
+	assert.ok(layout.frame.footerY <= 2556);
 });
 
 test("each canvas render resets inherited drawing state and leaves no glow state", () => {
@@ -420,6 +426,7 @@ test("each canvas render resets inherited drawing state and leaves no glow state
 		textBaseline: "alphabetic",
 		arc() {},
 		arcTo() {},
+		roundRect() {},
 		beginPath() {},
 		closePath() {},
 		lineTo() {},

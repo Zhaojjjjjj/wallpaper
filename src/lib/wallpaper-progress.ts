@@ -79,7 +79,7 @@ export function calculateGoalProgress(
 	startDateValue: string | undefined,
 	targetDateValue: string | undefined,
 	now: Date
-): { daysLeft: number; progress: number } | null {
+): { daysLeft: number; progress: number; totalDays: number; elapsedDays: number } | null {
 	const targetDate = parseDateOnly(targetDateValue);
 	if (!targetDate) return null;
 
@@ -88,15 +88,18 @@ export function calculateGoalProgress(
 	const daysLeft = Math.max(0, targetDay - nowDay);
 	const startDate = parseDateOnly(startDateValue);
 
-	if (!startDate) return { daysLeft, progress: 0 };
+	if (!startDate) return { daysLeft, progress: 0, totalDays: 0, elapsedDays: 0 };
 
 	const startDay = calendarDayNumber(startDate);
 	const totalDays = targetDay - startDay;
-	if (totalDays <= 0) return { daysLeft, progress: 0 };
+	if (totalDays <= 0) return { daysLeft, progress: 0, totalDays: 0, elapsedDays: 0 };
 
+	const elapsedDays = Math.min(totalDays, Math.max(0, nowDay - startDay));
 	return {
 		daysLeft,
-		progress: clampProgress((nowDay - startDay) / totalDays),
+		progress: clampProgress(elapsedDays / totalDays),
+		totalDays,
+		elapsedDays,
 	};
 }
 
@@ -135,4 +138,20 @@ export function getMonthInfo(now: Date): { daysInMonth: number; firstDayOffset: 
 export function getDayProgress(now: Date): number {
 	const elapsedSeconds = now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds();
 	return clampProgress(elapsedSeconds / 86_400);
+}
+
+export interface WeekDayInfo {
+	dayOfMonth: number;
+	month: number;
+}
+
+export function getWeekInfo(now: Date): { todayIndex: number; weekNumber: number; days: WeekDayInfo[] } {
+	const todayIndex = (now.getDay() + 6) % 7;
+	const monday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - todayIndex);
+	const days = Array.from({ length: 7 }, (_, index) => {
+		const date = new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + index);
+		return { dayOfMonth: date.getDate(), month: date.getMonth() + 1 };
+	});
+	const { index } = getDayOfYearInfo(now);
+	return { todayIndex, weekNumber: Math.floor(index / 7) + 1, days };
 }
