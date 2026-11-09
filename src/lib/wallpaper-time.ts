@@ -1,10 +1,4 @@
 import { toWallClockDate } from "./wallpaper-progress";
-import { WallpaperType } from "./types";
-
-export function millisecondsUntilNextMinute(now: Date): number {
-	const elapsed = now.getSeconds() * 1000 + now.getMilliseconds();
-	return 60_000 - elapsed;
-}
 
 export function millisecondsUntilNextDay(now: Date): number {
 	const nextDay = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
@@ -36,14 +30,10 @@ function millisecondsUntilNextDayInTimeZone(instant: Date, timeZone: string): nu
 	return Math.max(1, targetInstant - instant.getTime());
 }
 
-export function millisecondsUntilWallpaperUpdate(type: WallpaperType, now: Date, timeZone?: string): number {
-	return type === "day" || type === "today"
-		? millisecondsUntilNextMinute(toWallClockDate(now, timeZone))
-		: timeZone
-			? millisecondsUntilNextDayInTimeZone(now, timeZone)
-			: millisecondsUntilNextDay(now);
+export function millisecondsUntilWallpaperUpdate(now: Date, timeZone?: string): number {
+	return timeZone ? millisecondsUntilNextDayInTimeZone(now, timeZone) : millisecondsUntilNextDay(now);
 }
 
-export function getWallpaperCacheSeconds(type: WallpaperType, now: Date, timeZone?: string): number {
-	return Math.max(0, Math.floor(millisecondsUntilWallpaperUpdate(type, now, timeZone) / 1000));
+export function getWallpaperCacheSeconds(now: Date, timeZone?: string): number {
+	return Math.max(0, Math.floor(millisecondsUntilWallpaperUpdate(now, timeZone) / 1000));
 }

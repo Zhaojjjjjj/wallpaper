@@ -27,7 +27,7 @@ export async function GET(request: Request) {
 	const imageSource = svgToDataUrl(svg);
 	const textLayers = getWallpaperTextLayers(config, now);
 	const filename = `lifegrid-${config.type}-${config.width}x${config.height}.png`;
-	const cacheSeconds = getWallpaperCacheSeconds(config.type, instant, config.timeZone);
+	const cacheSeconds = getWallpaperCacheSeconds(instant, config.timeZone);
 	const fontData = await notoSansSc;
 
 	return new ImageResponse(

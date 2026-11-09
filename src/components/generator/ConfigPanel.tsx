@@ -7,7 +7,6 @@ import {
 	parseWallpaperIntegerDraft,
 	resolveWallpaperNumberDraft,
 } from "@/lib/wallpaper-config";
-import { formatDateOnly } from "@/lib/wallpaper-progress";
 import { DEVICE_CATEGORIES, DEVICE_PRESETS, DeviceCategory, getDeviceCategory, resolveDevicePresetId } from "@/lib/wallpaper-devices";
 import styles from "./ConfigPanel.module.css";
 
@@ -31,7 +30,7 @@ const PRESET_THEMES: { name: string; bg: string; accent: string; text?: string }
 ];
 
 type ThemeField = "bg" | "accent" | "text";
-type NumberField = "width" | "height" | "lifespan";
+type NumberField = "width" | "height";
 type DeviceTab = DeviceCategory | "custom";
 
 interface NumberInputProps {
@@ -122,7 +121,7 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ config, onChange }) =>
 	};
 
 	const handleNumberBlur = (field: NumberField, value: string, min: number, max: number): number => {
-		const currentValue = config[field] ?? 80;
+		const currentValue = config[field];
 		const normalized = finalizeWallpaperIntegerDraft(value, min, max, currentValue);
 		applyNumberValue(field, normalized);
 		return normalized;
@@ -139,14 +138,6 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ config, onChange }) =>
 				theme: { bg: theme.bg, accent: theme.accent, text: theme.text ?? theme.accent },
 			});
 		}
-	};
-
-	const handleTargetDateChange = (targetDate: string) => {
-		onChange({
-			...config,
-			targetDate,
-			goalStartDate: config.goalStartDate || formatDateOnly(new Date()),
-		});
 	};
 
 	const getCurrentThemeIndex = () => {
@@ -237,22 +228,7 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ config, onChange }) =>
 
 			<h3 className={styles.sectionTitle}>详细设置</h3>
 			<div className={styles.group}>
-				{config.type === "goal" && (
-					<>
-						<Input label="目标名称" value={config.goalName || ""} maxLength={40} placeholder="我的大目标" onChange={(e) => handleChange("goalName", e.target.value.slice(0, 40))} />
-						<Input label="开始日期" type="date" max={config.targetDate} value={config.goalStartDate || ""} onChange={(e) => handleChange("goalStartDate", e.target.value)} />
-						<Input label="目标日期" type="date" min={config.goalStartDate} value={config.targetDate || ""} onChange={(e) => handleTargetDateChange(e.target.value)} />
-					</>
-				)}
-
-				{config.type === "life" && (
-					<>
-						<Input label="出生日期" type="date" value={config.birthDate || ""} onChange={(e) => handleChange("birthDate", e.target.value)} />
-						<NumberInput label="预期寿命" value={config.lifespan ?? 80} min={1} max={120} onChange={(value) => handleNumberChange("lifespan", value, 1, 120)} onBlur={(value) => handleNumberBlur("lifespan", value, 1, 120)} />
-					</>
-				)}
-
-				{["year", "month", "week", "today", "calendar", "minimal", "day"].includes(config.type) && <p className={styles.hint}>此样式无需额外设置，只需自定义主题即可！</p>}
+				<p className={styles.hint}>此样式无需额外设置，只需自定义主题即可！</p>
 			</div>
 		</div>
 	);

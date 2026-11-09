@@ -14,20 +14,14 @@ import {
 	resolveWallpaperNumberDraft,
 	selectWallpaperType,
 } from "./wallpaper-config";
-import { calculateDayLayout, calculateLifeLayout } from "./wallpaper-layout";
 import {
-	calculateGoalProgress,
-	calculateLifeState,
-	calculateLifeWeeks,
 	calculateMonthProgress,
 	calculateYearProgress,
-	parseDateOnly,
 	toWallClockDate,
 } from "./wallpaper-progress";
 import {
 	getWallpaperCacheSeconds,
 	millisecondsUntilNextDay,
-	millisecondsUntilNextMinute,
 	millisecondsUntilWallpaperUpdate,
 } from "./wallpaper-time";
 import { getWallpaperTextLayers, renderWallpaperSvg, svgToDataUrl } from "./wallpaper-svg";
@@ -46,7 +40,7 @@ test("invalid public parameters fall back to safe wallpaper defaults", () => {
 		})
 	);
 
-	assert.equal(config.type, "year");
+	assert.equal(config.type, "calendar");
 	assert.equal(config.width, 1179);
 	assert.equal(config.height, 320);
 	assert.deepEqual(config.theme, {
@@ -59,20 +53,14 @@ test("invalid public parameters fall back to safe wallpaper defaults", () => {
 test("numeric and text parameters are bounded before rendering", () => {
 	const config = parseWallpaperConfig(
 		new URLSearchParams({
-			type: "life",
+			type: "month",
 			width: "99999",
 			height: "99999",
-			lifespan: "500",
-			birthDate: "2024-02-30",
-			goalName: `  ${"x".repeat(50)}  `,
 		})
 	);
 
 	assert.ok(config.width * config.height <= 8_388_608);
 	assert.ok(Math.abs(config.width / config.height - 4320 / 7680) < 0.001);
-	assert.equal(config.lifespan, 120);
-	assert.equal(config.birthDate, undefined);
-	assert.equal(config.goalName, "x".repeat(40));
 });
 
 test("temporary empty form values keep the previous valid number", () => {
@@ -123,7 +111,7 @@ test("wallpaper paths round-trip normalized configuration", () => {
 test("wallpaper paths omit parameters that cannot affect the selected type", () => {
 	const config = {
 		...parseWallpaperConfig(new URLSearchParams({
-			type: "year",
+			type: "month",
 			birthDate: "1990-01-01",
 			lifespan: "80",
 			goalName: "ignored",
@@ -137,7 +125,7 @@ test("wallpaper paths omit parameters that cannot affect the selected type", () 
 
 test("image paths round-trip normalized configuration", () => {
 	const original = {
-		...selectWallpaperType(parseWallpaperConfig(new URLSearchParams()), "goal", new Date(2026, 6, 17)),
+		...selectWallpaperType(parseWallpaperConfig(new URLSearchParams()), "month"),
 		timeZone: "Asia/Shanghai",
 	};
 	const path = buildWallpaperImagePath(original);
@@ -149,8 +137,7 @@ test("image paths round-trip normalized configuration", () => {
 
 test("image paths canonicalize direct UI configuration before publishing", () => {
 	const config = {
-		...selectWallpaperType(parseWallpaperConfig(new URLSearchParams()), "goal", new Date(2026, 6, 17)),
-		goalName: "x".repeat(50),
+		...selectWallpaperType(parseWallpaperConfig(new URLSearchParams()), "calendar"),
 		theme: { bg: "#000000", accent: "#FFFFFF", text: "#FFFFFF" },
 	};
 	const path = buildWallpaperImagePath(config);
@@ -158,7 +145,6 @@ test("image paths canonicalize direct UI configuration before publishing", () =>
 	const roundTripped = parseWallpaperConfig(searchParams);
 
 	assert.deepEqual(findWallpaperQueryIssues(searchParams), []);
-	assert.equal(roundTripped.goalName, "x".repeat(40));
 	assert.equal(roundTripped.theme.accent, "#ffffff");
 });
 
@@ -167,65 +153,45 @@ test("invalid time zones are removed at the public URL boundary", () => {
 	assert.equal(parseWallpaperConfig(new URLSearchParams({ timeZone: "Asia/Shanghai" })).timeZone, "Asia/Shanghai");
 });
 
-test("goal start dates after the target are discarded at the URL boundary", () => {
-	const config = parseWallpaperConfig(new URLSearchParams({
-		goalStartDate: "2026-07-25",
-		targetDate: "2026-07-24",
-	}));
-
-	assert.equal(config.goalStartDate, undefined);
-	assert.equal(config.targetDate, "2026-07-24");
-});
-
 test("PNG requests reject unknown and duplicate cache-busting parameters", () => {
-	assert.deepEqual(findWallpaperQueryIssues(new URLSearchParams("type=year&nonce=1")), ["unknown:nonce"]);
-	assert.deepEqual(findWallpaperQueryIssues(new URLSearchParams("type=year&type=day")), ["duplicate:type"]);
-	assert.deepEqual(findWallpaperQueryIssues(new URLSearchParams("type=year&goalName=cache-bypass")), ["irrelevant:goalName"]);
-	assert.deepEqual(findWallpaperQueryIssues(new URLSearchParams("type=year&width=NaN")), ["invalid:width"]);
-	assert.deepEqual(findWallpaperQueryIssues(new URLSearchParams("type=year&bg=%23FFFFFF")), ["noncanonical:bg"]);
-	assert.deepEqual(findWallpaperQueryIssues(new URLSearchParams("type=year&width=600")), []);
+	assert.deepEqual(findWallpaperQueryIssues(new URLSearchParams("type=month&nonce=1")), ["unknown:nonce"]);
+	assert.deepEqual(findWallpaperQueryIssues(new URLSearchParams("type=month&type=minimal")), ["duplicate:type"]);
+	assert.deepEqual(findWallpaperQueryIssues(new URLSearchParams("type=month&goalName=cache-bypass")), ["unknown:goalName"]);
+	assert.deepEqual(findWallpaperQueryIssues(new URLSearchParams("type=month&width=NaN")), ["invalid:width"]);
+	assert.deepEqual(findWallpaperQueryIssues(new URLSearchParams("type=month&bg=%23FFFFFF")), ["noncanonical:bg"]);
+	assert.deepEqual(findWallpaperQueryIssues(new URLSearchParams("type=month&width=600")), []);
 });
 
 test("every supported wallpaper type renders finite standalone SVG", () => {
-	for (const type of ["year", "goal", "month", "week", "minimal", "life", "day"] as const) {
-		const config = {
-			...selectWallpaperType(parseWallpaperConfig(new URLSearchParams()), type, new Date(2026, 6, 17, 15, 30)),
-			birthDate: "1990-01-01",
-			goalName: "Ship <v1>",
-		};
+	for (const type of ["month", "calendar", "minimal"] as const) {
+		const config = selectWallpaperType(parseWallpaperConfig(new URLSearchParams()), type);
 		const svg = renderWallpaperSvg(config, new Date(2026, 6, 20, 15, 30));
 
 		assert.match(svg, /^<svg /);
 		assert.match(svg, new RegExp(`width="${config.width}"`));
 		assert.match(svg, new RegExp(`height="${config.height}"`));
-		assert.doesNotMatch(svg, /NaN|Infinity|<v1>/);
+		assert.doesNotMatch(svg, /NaN|Infinity/);
 		assert.match(svg, /<\/svg>$/);
 	}
 });
 
-test("SVG preserves Canvas today markers and rounded clock-hand styling", () => {
+test("SVG preserves the calendar seal and motif line styling", () => {
 	const base = parseWallpaperConfig(new URLSearchParams());
-	const weekSvg = renderWallpaperSvg({ ...base, type: "week" }, new Date(2026, 6, 20));
-	const lifeSvg = renderWallpaperSvg({ ...base, type: "life", birthDate: "1990-01-01" }, new Date(2026, 6, 20));
-	const daySvg = renderWallpaperSvg({ ...base, type: "day" }, new Date(2026, 6, 20));
+	const calendarSvg = renderWallpaperSvg({ ...base, type: "calendar" }, new Date(2026, 6, 20));
+	const monthSvg = renderWallpaperSvg({ ...base, type: "month" }, new Date(2026, 6, 20));
 
-	assert.match(weekSvg, /class="today-column"/);
-	assert.match(lifeSvg, /class="today-ring"/);
-	assert.doesNotMatch(weekSvg, /<filter/);
-	assert.doesNotMatch(lifeSvg, /<filter/);
-	assert.match(daySvg, /stroke-linecap="round"/);
+	assert.match(calendarSvg, />日</);
+	assert.match(calendarSvg, /stroke-linecap="round"/);
+	assert.doesNotMatch(calendarSvg, /<filter/);
+	assert.doesNotMatch(monthSvg, /<filter/);
 });
-
-test("life SVG uses bounded path nodes instead of thousands of circle elements", () => {
-	const config = {
-		...parseWallpaperConfig(new URLSearchParams({ type: "life", birthDate: "1990-01-01", lifespan: "120" })),
-	};
+test("calendar SVG uses bounded nodes for its daily motif", () => {
+	const config = parseWallpaperConfig(new URLSearchParams({ type: "calendar" }));
 	const svg = renderWallpaperSvg(config, new Date(2026, 6, 18));
 
-	assert.ok((svg.match(/<circle\b/g) || []).length <= 2, "only the current-week dot and its ring may be circle elements");
+	assert.ok((svg.match(/<circle\b/g) || []).length <= 40, "motif circles stay bounded");
 	assert.ok((svg.match(/<path\b/g) || []).length <= 2);
 });
-
 test("SVG data URLs preserve non-ASCII wallpaper text", () => {
 	const dataUrl = svgToDataUrl('<svg xmlns="http://www.w3.org/2000/svg"><text>剩余天数</text></svg>');
 	const decoded = Buffer.from(dataUrl.split(",")[1], "base64").toString("utf8");
@@ -236,26 +202,13 @@ test("SVG data URLs preserve non-ASCII wallpaper text", () => {
 
 test("PNG text layers cover every wallpaper type", () => {
 	const now = new Date(2026, 6, 20, 15, 30);
-	for (const type of ["year", "goal", "month", "week", "minimal", "life", "day"] as const) {
-		const config = {
-			...selectWallpaperType(parseWallpaperConfig(new URLSearchParams()), type, new Date(2026, 6, 17)),
-			birthDate: "1990-01-01",
-			goalName: "Ship v1",
-		};
+	for (const type of ["month", "calendar", "minimal"] as const) {
+		const config = selectWallpaperType(parseWallpaperConfig(new URLSearchParams()), type);
 		const layers = getWallpaperTextLayers(config, now);
 
 		assert.ok(layers.length > 0, `${type} should have visible text`);
 		assert.ok(layers.every((layer) => Number.isFinite(layer.x) && Number.isFinite(layer.y) && layer.text.length > 0));
 	}
-});
-
-test("date-only values preserve their calendar date in the local timezone", () => {
-	const date = parseDateOnly("2026-07-17");
-
-	assert.ok(date);
-	assert.equal(date.getFullYear(), 2026);
-	assert.equal(date.getMonth(), 6);
-	assert.equal(date.getDate(), 17);
 });
 
 test("date-based progress advances only at the daily refresh boundary", () => {
@@ -279,7 +232,7 @@ test("year and month progress are invariant across host DST time zones", () => {
 	assert.equal(newYork.stdout, utc.stdout);
 });
 
-test("Canvas year variants use calendar progress across DST transitions", () => {
+test("Canvas minimal uses calendar progress across DST transitions", () => {
 	const enginePath = path.join(__dirname, "wallpaper-engine.js");
 	const configPath = path.join(__dirname, "wallpaper-config.js");
 	const script = `
@@ -299,7 +252,7 @@ test("Canvas year variants use calendar progress across DST transitions", () => 
 			new WallpaperEngine(context, config, new Date(2026, 2, 11, 8, 24)).render();
 			return text.find((value) => value.endsWith("%"));
 		};
-		process.stdout.write(JSON.stringify([render("year"), render("minimal")]));
+		process.stdout.write(JSON.stringify([render("minimal")]));
 	`;
 	const result = spawnSync(process.execPath, ["-e", script], {
 		env: { ...process.env, TZ: "America/New_York" },
@@ -307,48 +260,7 @@ test("Canvas year variants use calendar progress across DST transitions", () => 
 	});
 
 	assert.equal(result.status, 0, result.stderr);
-	assert.deepEqual(JSON.parse(result.stdout), ["18%", "18%"]);
-});
-
-test("goal progress uses the configured start and target dates", () => {
-	const state = calculateGoalProgress("2026-01-01", "2026-01-11", new Date(2026, 0, 6, 12));
-
-	assert.deepEqual(state, { daysLeft: 5, progress: 0.5, totalDays: 10, elapsedDays: 5 });
-	assert.deepEqual(calculateGoalProgress(undefined, "2026-01-11", new Date(2026, 0, 6, 12)), {
-		daysLeft: 5,
-		progress: 0,
-		totalDays: 0,
-		elapsedDays: 0,
-	});
-});
-
-test("selecting the goal style creates a stable seven-day countdown", () => {
-	const config = selectWallpaperType(
-		parseWallpaperConfig(new URLSearchParams()),
-		"goal",
-		new Date(2026, 6, 17, 15, 30)
-	);
-
-	assert.equal(config.goalStartDate, "2026-07-17");
-	assert.equal(config.targetDate, "2026-07-24");
-	assert.match(buildWallpaperPath(config), /goalStartDate=2026-07-17/);
-	assert.match(buildWallpaperPath(config), /targetDate=2026-07-24/);
-});
-
-test("life progress clamps future births and dates beyond the configured lifespan", () => {
-	assert.equal(calculateLifeWeeks("2030-01-01", new Date(2026, 0, 1), 80 * 52), 0);
-	assert.equal(calculateLifeWeeks("1900-01-01", new Date(2026, 0, 1), 80 * 52), 80 * 52);
-});
-
-test("future births do not mark a current life-calendar week", () => {
-	assert.deepEqual(calculateLifeState("2030-01-01", new Date(2026, 0, 1), 80 * 52), {
-		hasStarted: false,
-		weeksLived: 0,
-	});
-	assert.deepEqual(calculateLifeState("2026-01-01", new Date(2026, 0, 1), 80 * 52), {
-		hasStarted: true,
-		weeksLived: 0,
-	});
+	assert.deepEqual(JSON.parse(result.stdout), ["18%"]);
 });
 
 test("server rendering uses the requested wall-clock time zone", () => {
@@ -360,57 +272,29 @@ test("server rendering uses the requested wall-clock time zone", () => {
 	assert.deepEqual([newYork.getFullYear(), newYork.getMonth(), newYork.getDate(), newYork.getHours()], [2026, 6, 17, 12]);
 });
 
-test("day wallpapers schedule their next render on the next minute boundary", () => {
-	assert.equal(millisecondsUntilNextMinute(new Date("2026-07-17T10:20:00.000Z")), 60_000);
-	assert.equal(millisecondsUntilNextMinute(new Date("2026-07-17T10:20:59.750Z")), 250);
-});
-
 test("date-based wallpapers schedule their next render at local midnight", () => {
 	assert.equal(millisecondsUntilNextDay(new Date(2026, 6, 17, 23, 59, 59, 750)), 250);
 	assert.equal(millisecondsUntilNextDay(new Date(2026, 6, 17, 0, 0, 0, 0)), 86_400_000);
 });
 
 test("PNG cache lifetime never crosses the next visual update", () => {
-	assert.equal(getWallpaperCacheSeconds("day", new Date(2026, 6, 17, 10, 20, 59, 250)), 0);
-	assert.equal(getWallpaperCacheSeconds("year", new Date(2026, 6, 17, 23, 59, 30)), 30);
+	assert.equal(getWallpaperCacheSeconds(new Date(2026, 6, 17, 23, 59, 30)), 30);
 	assert.equal(
-		getWallpaperCacheSeconds("year", new Date("2026-03-08T05:00:00.000Z"), "America/New_York"),
+		getWallpaperCacheSeconds(new Date("2026-03-08T05:00:00.000Z"), "America/New_York"),
 		23 * 60 * 60
 	);
 });
 
 test("Canvas scheduling follows the configured time-zone boundary", () => {
 	const instant = new Date("2026-07-18T04:00:00.000Z");
-	assert.equal(millisecondsUntilWallpaperUpdate("year", instant, "Asia/Shanghai"), 12 * 60 * 60 * 1000);
-	assert.equal(millisecondsUntilWallpaperUpdate("year", instant, "America/New_York"), 24 * 60 * 60 * 1000);
-});
-
-test("day wallpaper geometry stays inside portrait and landscape canvases", () => {
-	for (const [width, height] of [[1179, 2556], [3840, 2160]] as const) {
-		const config = parseWallpaperConfig(new URLSearchParams({ type: "day", width: String(width), height: String(height) }));
-		const layout = calculateDayLayout(config);
-
-		assert.ok(layout.centerY - layout.radius >= 0);
-		assert.ok(layout.centerY + layout.radius <= height);
-		assert.ok(layout.digitalY + layout.timeSize / 2 <= height);
-		assert.ok(layout.dateY <= height);
-	}
-});
-
-test("default life grid reserves canvas space for every week and its footer", () => {
-	const config = parseWallpaperConfig(new URLSearchParams({ type: "life", width: "1179", height: "2556", birthDate: "1995-06-15", lifespan: "80" }));
-	const layout = calculateLifeLayout(config, new Date(2026, 2, 11, 8, 24));
-
-	assert.ok(layout.gridStartX >= 0);
-	assert.ok(layout.gridTop >= 0);
-	assert.ok(layout.gridStartX + (layout.cols - 1) * layout.pitch <= 1179);
-	assert.ok(layout.gridTop + (layout.rows - 1) * layout.rowPitch < layout.frame.footerY);
-	assert.ok(layout.frame.footerY <= 2556);
+	assert.equal(millisecondsUntilWallpaperUpdate(instant, "Asia/Shanghai"), 12 * 60 * 60 * 1000);
+	assert.equal(millisecondsUntilWallpaperUpdate(instant, "America/New_York"), 24 * 60 * 60 * 1000);
 });
 
 test("each canvas render resets inherited drawing state and leaves no glow state", () => {
 	let transformReset = false;
 	let cleared = false;
+	const savedStates: Record<string, unknown>[] = [];
 	const context = {
 		fillStyle: "magenta",
 		font: "",
@@ -431,9 +315,27 @@ test("each canvas render resets inherited drawing state and leaves no glow state
 		closePath() {},
 		lineTo() {},
 		moveTo() {},
-		restore() {},
+		restore() {
+			const state = savedStates.pop();
+			if (state) Object.assign(context, state);
+		},
 		rotate() {},
-		save() {},
+		save() {
+			savedStates.push({
+				fillStyle: context.fillStyle,
+				font: context.font,
+				globalAlpha: context.globalAlpha,
+				globalCompositeOperation: context.globalCompositeOperation,
+				lineCap: context.lineCap,
+				lineJoin: context.lineJoin,
+				lineWidth: context.lineWidth,
+				shadowBlur: context.shadowBlur,
+				shadowColor: context.shadowColor,
+				strokeStyle: context.strokeStyle,
+				textAlign: context.textAlign,
+				textBaseline: context.textBaseline,
+			});
+		},
 		stroke() {},
 		translate() {},
 		clearRect() { cleared = true; },
@@ -442,7 +344,7 @@ test("each canvas render resets inherited drawing state and leaves no glow state
 		fillText() {},
 		setTransform() { transformReset = true; },
 	} as unknown as CanvasRenderingContext2D;
-	const config = { ...parseWallpaperConfig(new URLSearchParams()), type: "week" as const };
+	const config = { ...parseWallpaperConfig(new URLSearchParams()), type: "calendar" as const };
 
 	new WallpaperEngine(context, config, new Date(2026, 6, 18, 12)).render();
 

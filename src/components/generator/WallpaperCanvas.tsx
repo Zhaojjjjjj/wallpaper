@@ -30,7 +30,7 @@ export const WallpaperCanvas: React.FC<WallpaperCanvasProps> = ({ config, classN
 		let timer: number | undefined;
 
 		const scheduleNextRender = () => {
-			const delay = millisecondsUntilWallpaperUpdate(config.type, new Date(), config.timeZone);
+			const delay = millisecondsUntilWallpaperUpdate(new Date(), config.timeZone);
 			timer = window.setTimeout(() => {
 				render();
 				scheduleNextRender();

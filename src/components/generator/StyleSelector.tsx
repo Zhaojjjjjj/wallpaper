@@ -2,7 +2,6 @@ import React, { useMemo } from "react";
 import { Card } from "@/components/common/Card";
 import { WallpaperCanvas } from "./WallpaperCanvas";
 import { WallpaperConfig, WallpaperType } from "@/lib/types";
-import { formatDateOnly } from "@/lib/wallpaper-progress";
 import styles from "./StyleSelector.module.css";
 
 interface StyleSelectorProps {
@@ -12,27 +11,13 @@ interface StyleSelectorProps {
 }
 
 const STYLES: { id: WallpaperType; name: string; desc: string }[] = [
-	{ id: "year", name: "年度进度", desc: "365 天点阵长卷，一天一格" },
-	{ id: "month", name: "月历", desc: "真实日历，今日高亮" },
-	{ id: "week", name: "本周", desc: "七日长条，今日整列高亮" },
-	{ id: "today", name: "今日", desc: "24 小时刻度，实时流逝" },
 	{ id: "calendar", name: "日历", desc: "每日一页，一天一句" },
-	{ id: "goal", name: "目标倒计时", desc: "一条时间轴，从开始到截止" },
-	{ id: "life", name: "生命日历", desc: "以周为单位的一生" },
-	{ id: "day", name: "时钟", desc: "数字刻度表盘，带秒针" },
+	{ id: "month", name: "月历", desc: "真实日历，今日高亮" },
 	{ id: "minimal", name: "极简", desc: "左对齐大字，只留百分比" },
 ];
 
 function sampleConfig(type: WallpaperType, theme: WallpaperConfig["theme"]): WallpaperConfig {
-	const base: WallpaperConfig = { type, width: 300, height: 460, theme };
-	if (type === "life") return { ...base, birthDate: "1995-06-15", lifespan: 80 };
-	if (type === "goal") {
-		const now = new Date();
-		const target = new Date(now);
-		target.setDate(target.getDate() + 90);
-		return { ...base, goalName: "新年目标", goalStartDate: formatDateOnly(now), targetDate: formatDateOnly(target) };
-	}
-	return base;
+	return { type, width: 300, height: 460, theme };
 }
 
 export const StyleSelector: React.FC<StyleSelectorProps> = ({ selected, theme, onSelect }) => {

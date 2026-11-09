@@ -43,22 +43,13 @@ function readPngDimensions(buffer) {
 try {
 	await waitForServer();
 
-	for (const type of ["year", "goal", "month", "week", "today", "calendar", "minimal", "life", "day"]) {
+	for (const type of ["month", "calendar", "minimal"]) {
 		const query = new URLSearchParams({
 			type,
 			width: "320",
 			height: "480",
 			timeZone: "Asia/Shanghai",
 		});
-		if (type === "life") {
-			query.set("birthDate", "1990-01-01");
-			query.set("lifespan", "80");
-		}
-		if (type === "goal") {
-			query.set("goalStartDate", "2026-07-18");
-			query.set("targetDate", "2026-07-25");
-			query.set("goalName", "测试目标");
-		}
 		const response = await fetch(`${baseUrl}/api/wallpaper.png?${query}`);
 		if (!response.ok) throw new Error(`${type}: ${response.status} ${await response.text()}`);
 		const image = Buffer.from(await response.arrayBuffer());
@@ -69,21 +60,21 @@ try {
 		assert.deepEqual(readPngDimensions(image), { width: 320, height: 480 });
 	}
 
-	const invalidResponse = await fetch(`${baseUrl}/api/wallpaper.png?type=year&nonce=cache-bypass`);
+	const invalidResponse = await fetch(`${baseUrl}/api/wallpaper.png?type=month&nonce=cache-bypass`);
 	assert.equal(invalidResponse.status, 400);
 	assert.deepEqual(await invalidResponse.json(), {
 		code: "INVALID_QUERY",
 		issues: ["unknown:nonce"],
 	});
 
-	const irrelevantResponse = await fetch(`${baseUrl}/api/wallpaper.png?type=year&goalName=cache-bypass`);
+	const irrelevantResponse = await fetch(`${baseUrl}/api/wallpaper.png?type=month&goalName=cache-bypass`);
 	assert.equal(irrelevantResponse.status, 400);
 	assert.deepEqual(await irrelevantResponse.json(), {
 		code: "INVALID_QUERY",
-		issues: ["irrelevant:goalName"],
+		issues: ["unknown:goalName"],
 	});
 
-	console.log("PNG integration: 9/9 image types and invalid-query handling passed");
+	console.log("PNG integration: 3/3 image types and invalid-query handling passed");
 } catch (error) {
 	if (error instanceof Error) error.message += `\nProduction server logs:\n${logs}`;
 	throw error;
