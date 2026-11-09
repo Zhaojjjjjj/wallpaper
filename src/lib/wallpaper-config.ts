@@ -9,6 +9,10 @@ const TYPE_SPECIFIC_QUERY_KEYS: Record<WallpaperType, ReadonlySet<string>> = {
 	month: new Set(),
 	calendar: new Set(),
 	minimal: new Set(),
+	color: new Set(),
+	character: new Set(),
+	generative: new Set(),
+	moon: new Set(),
 };
 
 function normalizeType(value: string | null): WallpaperType {

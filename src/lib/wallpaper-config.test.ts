@@ -375,3 +375,55 @@ test("device presets use calibrated dimensions and preserve duplicate-resolution
 	assert.equal(resolveDevicePresetId(1179, 2556, "iphone-15"), "iphone-15");
 	assert.equal(resolveDevicePresetId(1000, 1000), "custom");
 });
+
+import { calculateColorLayout, calculateCharacterLayout, calculateGenerativeLayout, calculateMoonLayout } from "./wallpaper-layout";
+import { TRADITIONAL_COLORS } from "./traditional-colors";
+import { DAILY_CHARACTERS } from "./daily-characters";
+
+const sampleTheme = { bg: "#000000", accent: "#FFFFFF", text: "#FFFFFF" };
+
+test("daily color walks the traditional palette one per day", () => {
+	assert.equal(TRADITIONAL_COLORS.length, 100);
+	assert.equal(new Set(TRADITIONAL_COLORS.map((c) => c.name)).size, 100);
+	const day1 = calculateColorLayout({ type: "color", width: 1179, height: 2556, theme: sampleTheme }, new Date(2026, 10, 9, 12));
+	const day2 = calculateColorLayout({ type: "color", width: 1179, height: 2556, theme: sampleTheme }, new Date(2026, 10, 10, 12));
+	assert.notEqual(day1.name, day2.name);
+	assert.match(day1.hexText, /^#[0-9A-F]{6}$/);
+	assert.equal(day1.swatches.length, 5);
+	// Ink flips with field luminance so text always stays readable.
+	const light = calculateColorLayout({ type: "color", width: 1179, height: 2556, theme: sampleTheme }, new Date(2026, 10, 9, 12));
+	assert.ok(light.ink === "#1C1A17" || light.ink === "#F7F3EA");
+});
+
+test("daily character cycles a single-character set", () => {
+	assert.equal(DAILY_CHARACTERS.length, 182);
+	assert.ok(DAILY_CHARACTERS.every((entry) => entry.char.length === 1 && entry.pinyin.length > 0 && entry.note.length > 0));
+	const layout = calculateCharacterLayout({ type: "character", width: 1179, height: 2556, theme: sampleTheme }, new Date(2026, 10, 9, 12));
+	assert.equal(layout.char.length, 1);
+	assert.ok(layout.index >= 0 && layout.index < 182);
+});
+
+test("generative study is deterministic per day and rotates algorithms", () => {
+	const make = (date: Date) => calculateGenerativeLayout({ type: "generative", width: 1179, height: 2556, theme: sampleTheme }, date);
+	const a = make(new Date(2026, 10, 9, 12));
+	const b = make(new Date(2026, 10, 9, 18));
+	assert.deepEqual(a.paths.map((p) => p.d), b.paths.map((p) => p.d));
+	assert.equal(a.seedLabel, b.seedLabel);
+	const algos = new Set([0, 1, 2, 3].map((offset) => make(new Date(2026, 10, 9 + offset, 12)).algoEn));
+	assert.equal(algos.size, 4);
+	for (const path of a.paths) assert.ok(!path.d.includes("NaN"), path.d);
+});
+
+test("moon layout follows the real lunar cycle", () => {
+	const make = (date: Date) => calculateMoonLayout({ type: "moon", width: 1179, height: 2556, theme: sampleTheme }, date);
+	const newMoon = make(new Date(2026, 10, 9, 12));
+	assert.ok(newMoon.illumPct <= 5, `new moon illum ${newMoon.illumPct}`);
+	const fullMoon = make(new Date(2026, 10, 24, 12));
+	assert.equal(fullMoon.phaseName, "望月");
+	assert.ok(fullMoon.illumPct >= 95, `full moon illum ${fullMoon.illumPct}`);
+	const firstQuarter = make(new Date(2026, 10, 17, 12));
+	assert.equal(firstQuarter.phaseName, "上弦月");
+	assert.ok(firstQuarter.illumPct >= 40 && firstQuarter.illumPct <= 60);
+	assert.ok(firstQuarter.waxing);
+	assert.ok(fullMoon.litPath.includes(" A "));
+});

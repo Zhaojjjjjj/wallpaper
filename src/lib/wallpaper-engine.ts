@@ -3,9 +3,14 @@ import { toWallClockDate } from "./wallpaper-progress";
 import {
 	TRACK_OPACITY,
 	calculateCalendarLayout,
+	calculateCharacterLayout,
+	calculateColorLayout,
+	calculateGenerativeLayout,
 	calculateMinimalLayout,
 	calculateMonthLayout,
+	calculateMoonLayout,
 } from "./wallpaper-layout";
+import type { GenPath, MotifCircle, MotifLine } from "./wallpaper-layout";
 
 type TextAlignOption = "left" | "center" | "right";
 
@@ -47,6 +52,18 @@ export class WallpaperEngine {
 				break;
 			case "minimal":
 				this.drawMinimal();
+				break;
+			case "color":
+				this.drawColor();
+				break;
+			case "character":
+				this.drawCharacter();
+				break;
+			case "generative":
+				this.drawGenerative();
+				break;
+			case "moon":
+				this.drawMoon();
 				break;
 		}
 	}
@@ -179,7 +196,7 @@ export class WallpaperEngine {
 
 	private drawCalendar() {
 		const layout = calculateCalendarLayout(this.config, this.now);
-		const { accent, text } = this.config.theme;
+		const { accent } = this.config.theme;
 		const frame = layout.frame;
 
 		this.eyebrow(`${layout.monthEn} · ${layout.monthName}`, frame.marginX, frame.eyebrowY, frame.eyebrowSize, "left", 0.6);
@@ -192,23 +209,8 @@ export class WallpaperEngine {
 		if (layout.isWeekend) this.dot(layout.weekendDotX, layout.weekendDotY, Math.max(3, layout.weekdaySize * 0.14), accent, 1);
 
 		// The month's small line motif.
-		for (const stroke of layout.motifLines) {
-			this.ctx.save();
-			this.ctx.strokeStyle = stroke.accent ? accent : text;
-			this.ctx.globalAlpha = 0.85;
-			this.ctx.lineWidth = stroke.width;
-			this.ctx.lineCap = "round";
-			this.ctx.beginPath();
-			this.ctx.moveTo(stroke.x1, stroke.y1);
-			this.ctx.lineTo(stroke.x2, stroke.y2);
-			this.ctx.stroke();
-			this.ctx.restore();
-		}
-		for (const circle of layout.motifCircles) {
-			if (circle.bgFilled) this.dot(circle.cx, circle.cy, circle.r, this.config.theme.bg, 1);
-			else if (circle.filled) this.dot(circle.cx, circle.cy, circle.r, circle.accent ? accent : text, 0.9);
-			else this.ring(circle.cx, circle.cy, circle.r, circle.accent ? accent : text, circle.width);
-		}
+		this.drawMotifLines(layout.motifLines);
+		this.drawMotifCircles(layout.motifCircles);
 		this.drawText(layout.motifName, this.width / 2, layout.motifCaptionY, layout.motifCaptionSize, "500", 0.5, { tracking: layout.motifCaptionSize * 0.5 });
 
 		// Quote: vermilion dash, then the day's sentence.
@@ -231,6 +233,129 @@ export class WallpaperEngine {
 		this.drawText("ONE PAGE A DAY", frame.marginX, frame.footerY, frame.footerSize, "600", 0.45, { align: "left", tracking: frame.footerSize * 0.22 });
 		this.hairline(layout.progressX0, layout.progressX1, frame.footerY, accent, TRACK_OPACITY, 2);
 		this.dot(layout.progressDotX, frame.footerY, Math.max(3, this.width * 0.006), accent, 1);
+	}
+
+private drawMotifLines(lines: MotifLine[]) {
+		const { accent, text } = this.config.theme;
+		for (const stroke of lines) {
+			this.ctx.save();
+			this.ctx.strokeStyle = stroke.color ?? (stroke.accent ? accent : text);
+			this.ctx.globalAlpha = 0.85;
+			this.ctx.lineWidth = stroke.width;
+			this.ctx.lineCap = "round";
+			this.ctx.beginPath();
+			this.ctx.moveTo(stroke.x1, stroke.y1);
+			this.ctx.lineTo(stroke.x2, stroke.y2);
+			this.ctx.stroke();
+			this.ctx.restore();
+		}
+	}
+
+	private drawMotifCircles(circles: MotifCircle[]) {
+		const { accent, text, bg } = this.config.theme;
+		for (const circle of circles) {
+			if (circle.bgFilled) this.dot(circle.cx, circle.cy, circle.r, bg, 1);
+			else if (circle.filled) this.dot(circle.cx, circle.cy, circle.r, circle.fill ?? (circle.accent ? accent : text), circle.opacity ?? 0.9);
+			else {
+				this.ctx.save();
+				this.ctx.globalAlpha = circle.opacity ?? 1;
+				this.ctx.strokeStyle = circle.color ?? (circle.accent ? accent : text);
+				this.ctx.lineWidth = circle.width;
+				this.ctx.beginPath();
+				this.ctx.arc(circle.cx, circle.cy, circle.r, 0, Math.PI * 2);
+				this.ctx.stroke();
+				this.ctx.restore();
+			}
+		}
+	}
+
+	private drawGenPaths(paths: GenPath[]) {
+		if (typeof Path2D === "undefined") return;
+		const { accent, text } = this.config.theme;
+		for (const path of paths) {
+			const p2d = new Path2D(path.d);
+			this.ctx.save();
+			if (path.filled) {
+				this.ctx.globalAlpha = path.opacity ?? 0.92;
+				this.ctx.fillStyle = path.fill ?? (path.accent ? accent : text);
+				this.ctx.fill(p2d);
+			} else {
+				this.ctx.globalAlpha = path.opacity ?? 0.9;
+				this.ctx.strokeStyle = path.accent ? accent : text;
+				this.ctx.lineWidth = path.width;
+				this.ctx.lineCap = "round";
+				this.ctx.lineJoin = "round";
+				this.ctx.stroke(p2d);
+			}
+			this.ctx.restore();
+		}
+	}
+
+	private drawColor() {
+		const layout = calculateColorLayout(this.config, this.now);
+		const { ink } = layout;
+		const frame = layout.frame;
+		this.ctx.save();
+		this.ctx.fillStyle = layout.field;
+		this.ctx.fillRect(0, 0, this.width, this.height);
+		this.ctx.restore();
+		this.drawText("中国传统色", frame.marginX, frame.eyebrowY, frame.eyebrowSize, "600", 0.7, { align: "left", tracking: frame.eyebrowSize * 0.22, color: ink });
+		this.drawText("TRADITIONAL COLOR", frame.rightX, frame.eyebrowY, frame.eyebrowSize, "600", 0.5, { align: "right", tracking: frame.eyebrowSize * 0.22, color: ink });
+		this.drawText(layout.name, frame.marginX, layout.nameY, layout.nameSize, "700", 1, { align: "left", color: ink });
+		this.drawMotifLines([layout.rule]);
+		this.drawText(layout.note, frame.marginX, layout.noteY, layout.noteSize, "500", 0.78, { align: "left", color: ink });
+		const labels = ["HEX", "RGB", "CMYK"];
+		const values = [layout.hexText, layout.rgbText, layout.cmykText];
+		layout.metaYs.forEach((y, i) => {
+			this.drawText(labels[i], frame.marginX, y, layout.metaSize, "600", 0.5, { align: "left", tracking: layout.metaSize * 0.2, color: ink });
+			this.drawText(values[i], frame.rightX, y, layout.metaSize, "500", 0.92, { align: "right", color: ink });
+		});
+		this.drawMotifCircles([...layout.swatches, layout.swatchRing]);
+		this.drawText("每日一色 · A COLOR A DAY", frame.marginX, frame.footerY, frame.footerSize, "500", 0.55, { align: "left", tracking: frame.footerSize * 0.14, color: ink });
+		this.drawText("色谱 · SPECTRUM", frame.marginX, layout.swatchCaptionY, layout.metaSize * 0.85, "600", 0.5, { align: "left", tracking: layout.metaSize * 0.2, color: ink });
+		this.drawText(`Nº ${String(layout.index + 1).padStart(3, "0")} / ${layout.total}`, frame.rightX, frame.footerY, frame.footerSize, "500", 0.55, { align: "right", tracking: frame.footerSize * 0.14, color: ink });
+	}
+
+	private drawCharacter() {
+		const layout = calculateCharacterLayout(this.config, this.now);
+		const { accent } = this.config.theme;
+		const frame = layout.frame;
+		this.eyebrow("汉字 · CHINESE CHARACTER", frame.marginX, frame.eyebrowY, frame.eyebrowSize, "left", 0.55);
+		this.eyebrow(layout.pinyin.toUpperCase(), frame.rightX, frame.eyebrowY, frame.eyebrowSize, "right", 0.5);
+		this.drawText(layout.char, this.width / 2, layout.charY, layout.charSize, "600");
+		this.ctx.save();
+		this.ctx.fillStyle = accent;
+		this.ctx.fillRect(this.width / 2 - layout.ruleWidth / 2, layout.ruleY, layout.ruleWidth, Math.max(3, this.width * 0.006));
+		this.ctx.restore();
+		this.drawText(layout.pinyin, this.width / 2, layout.pinyinY, layout.pinyinSize, "500", 0.55, { tracking: layout.pinyinSize * 0.3 });
+		this.drawText(layout.note, this.width / 2, layout.noteY, layout.noteSize, "500", 0.75);
+		this.footer("每日一字 · A CHARACTER A DAY", `Nº ${String(layout.index + 1).padStart(3, "0")} / ${layout.total}`, frame);
+	}
+
+	private drawGenerative() {
+		const layout = calculateGenerativeLayout(this.config, this.now);
+		const frame = layout.frame;
+		this.eyebrow("生成 · GENERATIVE STUDY", frame.marginX, frame.eyebrowY, frame.eyebrowSize, "left", 0.55);
+		this.eyebrow(`SEED ${layout.seedLabel}`, frame.rightX, frame.eyebrowY, frame.eyebrowSize, "right", 0.5);
+		this.drawGenPaths(layout.paths);
+		this.drawMotifCircles(layout.dots);
+		this.footer(`${layout.algoName} · ${layout.algoEn}`, "程序生成 · PROCEDURAL", frame);
+	}
+
+	private drawMoon() {
+		const layout = calculateMoonLayout(this.config, this.now);
+		const frame = layout.frame;
+		this.eyebrow("月相 · MOON PHASE", frame.marginX, frame.eyebrowY, frame.eyebrowSize, "left", 0.55);
+		this.eyebrow(layout.waxing ? "盈 · WAXING" : "亏 · WANING", frame.rightX, frame.eyebrowY, frame.eyebrowSize, "right", 0.5);
+		this.drawMotifCircles(layout.stars);
+		this.drawMotifCircles([layout.darkCircle]);
+		this.drawGenPaths([{ d: layout.litPath, width: 0, filled: true, fill: this.config.theme.text, opacity: 0.95 }]);
+		this.drawMotifCircles([layout.ringCircle]);
+		this.drawText(layout.phaseName, frame.marginX, layout.nameY, layout.nameSize, "600", 1, { align: "left" });
+		this.drawText(layout.note, frame.marginX, layout.noteY, layout.noteSize, "500", 0.7, { align: "left" });
+		this.drawText(`照亮 ${layout.illumPct}%`, frame.rightX, layout.nameY, layout.metaSize + 6, "500", 0.9, { align: "right" });
+		this.drawText(`月龄 ${layout.age.toFixed(1)} 天`, frame.rightX, layout.noteY, layout.metaSize, "500", 0.55, { align: "right" });
+		this.footer("月相 · LUNAR PHASE", layout.waxing ? "渐盈 · WAXING" : "渐亏 · WANING", frame);
 	}
 
 	private drawMinimal() {

@@ -14,6 +14,10 @@ re-download it daily and your wallpaper always shows today's progress.
 | `calendar` | A one-page-a-day calendar in the spirit of zz's calendar365: giant date, weekday in Chinese and English, a generative line motif that changes composition every day within the month's family （寒梅·春雨·新芽·落花·青叶·荷风·烈日·海浪·秋月·柿子·枯枝·落雪）, that day's sentence from the philosophical 365-quote set, a seal stamp, and a year-progress line |
 | `month` | A poster-style calendar of the current month: tracked English eyebrow, accent rule, real Monday-first grid, today as a filled disc, progress hairline |
 | `minimal` | Just the year progress as a giant light-weight percentage, with the days remaining |
+| `color` | 每日一色： one of 100 Chinese traditional colors fills the whole field each day — name in giant type, an imagery note, HEX/RGB/CMYK values and a five-step spectrum derived from the day's color; no dates anywhere |
+| `character` | 每日一字： one of 182 Chinese characters a day, poster-large, with pinyin and a one-line note on its origin or meaning |
+| `generative` | 每日生成： a procedural study seeded by the day — four algorithms rotate (quarter arcs, wobbly contours, a dot interference field, quarter discs); the artwork changes completely every day and shows nothing but a seed code |
+| `moon` | 月相： tonight's real moon phase, computed from the synodic cycle and drawn with a true elliptical terminator — phase name, illumination and moon age, no calendar dates |
 
 ## Development
 
@@ -45,7 +49,7 @@ Supported query parameters:
 
 | Parameter | Description |
 | --- | --- |
-| `type` | `month`, `calendar`, or `minimal` |
+| `type` | `month`, `calendar`, `minimal`, `color`, `character`, `generative`, or `moon` |
 | `width`, `height` | Output dimensions; normalized to the global pixel budget |
 | `bg`, `accent`, `text` | Six-digit hexadecimal colors |
 | `timeZone` | IANA time zone such as `Asia/Shanghai` |

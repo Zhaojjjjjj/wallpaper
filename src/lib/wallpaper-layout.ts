@@ -1,5 +1,7 @@
 import { WallpaperConfig } from "./types";
 import { getDailyQuote } from "./calendar-quotes";
+import { getDailyColor, TRADITIONAL_COLORS } from "./traditional-colors";
+import { getDailyCharacter, DAILY_CHARACTERS } from "./daily-characters";
 import { getDayOfYearInfo, getMonthInfo } from "./wallpaper-progress";
 
 /**
@@ -139,6 +141,8 @@ export interface MotifLine {
 	y2: number;
 	width: number;
 	accent?: boolean;
+	/** Explicit stroke color; wins over accent/theme. */
+	color?: string;
 }
 
 export interface MotifCircle {
@@ -149,6 +153,23 @@ export interface MotifCircle {
 	accent?: boolean;
 	filled?: boolean;
 	bgFilled?: boolean;
+	/** Explicit fill color for filled circles; wins over accent/theme. */
+	fill?: string;
+	/** Explicit stroke color; wins over accent/theme. */
+	color?: string;
+	/** Fill/stroke opacity override. */
+	opacity?: number;
+}
+
+/** A freeform SVG path, drawn identically by SVG and Canvas (Path2D). */
+export interface GenPath {
+	d: string;
+	width: number;
+	accent?: boolean;
+	filled?: boolean;
+	/** Explicit fill color; wins over accent/theme. */
+	fill?: string;
+	opacity?: number;
 }
 
 export interface CalendarLayout {
@@ -452,3 +473,400 @@ export function calculateCalendarLayout(config: WallpaperConfig, now: Date): Cal
 		quote,
 	};
 }
+
+// ---------------------------------------------------------------------------
+// Shared helpers for the daily, date-free styles.
+// ---------------------------------------------------------------------------
+
+function hexToRgb(hex: string): [number, number, number] {
+	const value = parseInt(hex.replace("#", ""), 16);
+	return [(value >> 16) & 255, (value >> 8) & 255, value & 255];
+}
+
+function rgbToHex(r: number, g: number, b: number): string {
+	const part = (n: number) => Math.round(Math.max(0, Math.min(255, n))).toString(16).padStart(2, "0");
+	return `#${part(r)}${part(g)}${part(b)}`;
+}
+
+function mixHex(hex: string, target: string, t: number): string {
+	const [r1, g1, b1] = hexToRgb(hex);
+	const [r2, g2, b2] = hexToRgb(target);
+	return rgbToHex(r1 + (r2 - r1) * t, g1 + (g2 - g1) * t, b1 + (b2 - b1) * t);
+}
+
+function inkForField(hex: string): string {
+	const [r, g, b] = hexToRgb(hex);
+	const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+	return luminance > 0.62 ? "#1C1A17" : "#F7F3EA";
+}
+
+const r1 = (n: number) => Math.round(n * 10) / 10;
+
+// ---------------------------------------------------------------------------
+// color — 每日一色: a Chinese traditional color fills the whole field.
+// ---------------------------------------------------------------------------
+
+export interface ColorLayout {
+	frame: PosterFrame;
+	field: string;
+	ink: string;
+	name: string;
+	note: string;
+	index: number;
+	total: number;
+	nameY: number;
+	nameSize: number;
+	noteY: number;
+	noteSize: number;
+	rule: MotifLine;
+	metaSize: number;
+	metaYs: number[];
+	hexText: string;
+	rgbText: string;
+	cmykText: string;
+	swatches: MotifCircle[];
+	swatchRing: MotifCircle;
+	swatchCaptionY: number;
+}
+
+export function calculateColorLayout(config: WallpaperConfig, now: Date): ColorLayout {
+	const { width, height } = config;
+	const frame = posterFrame(width, height);
+	const { index } = getDayOfYearInfo(now);
+	const color = getDailyColor(index);
+	const ink = inkForField(color.hex);
+	const [r, g, b] = hexToRgb(color.hex);
+	const maxChannel = Math.max(r, g, b) / 255;
+	const cmyk = maxChannel === 0
+		? "0 · 0 · 0 · 100"
+		: [r, g, b].map((v) => Math.round((1 - v / 255 / maxChannel) * 100)).join(" · ") + ` · ${Math.round((1 - maxChannel) * 100)}`;
+	const shades = [
+		mixHex(color.hex, "#ffffff", 0.62),
+		mixHex(color.hex, "#ffffff", 0.32),
+		color.hex,
+		mixHex(color.hex, "#000000", 0.24),
+		mixHex(color.hex, "#000000", 0.48),
+	];
+	const swatchY = height * 0.792;
+	const swatchR = width * 0.027;
+	const swatches: MotifCircle[] = shades.map((hex, i) => ({
+		cx: frame.marginX + swatchR + i * width * 0.082,
+		cy: swatchY,
+		r: swatchR,
+		width: 0,
+		filled: true,
+		fill: hex,
+		opacity: 1,
+	}));
+	const nameSize = Math.min(width * 0.30, frame.contentWidth / Math.max(color.name.length, 1) * 0.98);
+	return {
+		frame,
+		field: color.hex,
+		ink,
+		name: color.name,
+		note: color.note,
+		index: color.index,
+		total: TRADITIONAL_COLORS.length,
+		nameY: height * 0.345,
+		nameSize,
+		noteY: height * 0.485,
+		noteSize: Math.min(width * 0.037, height * 0.023),
+		rule: { x1: frame.marginX, y1: height * 0.438, x2: frame.marginX + width * 0.075, y2: height * 0.438, width: Math.max(3, width * 0.006), color: ink },
+		metaSize: Math.min(width * 0.031, height * 0.02),
+		metaYs: [height * 0.585, height * 0.635, height * 0.685],
+		hexText: color.hex.toUpperCase(),
+		rgbText: `${r} · ${g} · ${b}`,
+		cmykText: cmyk,
+		swatches,
+		swatchCaptionY: height * 0.745,
+		swatchRing: { cx: swatches[2].cx, cy: swatchY, r: swatchR + width * 0.011, width: Math.max(2, width * 0.0032), color: ink },
+	};
+}
+
+// ---------------------------------------------------------------------------
+// character — 每日一字: one character a day, with pinyin and an origin note.
+// ---------------------------------------------------------------------------
+
+export interface CharacterLayout {
+	frame: PosterFrame;
+	char: string;
+	pinyin: string;
+	note: string;
+	index: number;
+	total: number;
+	charY: number;
+	charSize: number;
+	ruleY: number;
+	ruleWidth: number;
+	pinyinY: number;
+	pinyinSize: number;
+	noteY: number;
+	noteSize: number;
+}
+
+export function calculateCharacterLayout(config: WallpaperConfig, now: Date): CharacterLayout {
+	const { width, height } = config;
+	const frame = posterFrame(width, height);
+	const { index } = getDayOfYearInfo(now);
+	const entry = getDailyCharacter(index);
+	return {
+		frame,
+		char: entry.char,
+		pinyin: entry.pinyin,
+		note: entry.note,
+		index: entry.index,
+		total: DAILY_CHARACTERS.length,
+		charY: height * 0.415,
+		charSize: width * 0.47,
+		ruleY: height * 0.575,
+		ruleWidth: width * 0.075,
+		pinyinY: height * 0.628,
+		pinyinSize: Math.min(width * 0.046, height * 0.029),
+		noteY: height * 0.692,
+		noteSize: Math.min(width * 0.036, height * 0.023),
+	};
+}
+
+// ---------------------------------------------------------------------------
+// generative — 每日生成: a seeded procedural study, four algorithms in turn.
+// ---------------------------------------------------------------------------
+
+export interface GenerativeLayout {
+	frame: PosterFrame;
+	algoName: string;
+	algoEn: string;
+	seedLabel: string;
+	paths: GenPath[];
+	dots: MotifCircle[];
+}
+
+const GEN_ALGOS = [
+	{ name: "弧线", en: "QUARTER ARCS" },
+	{ name: "等高线", en: "CONTOURS" },
+	{ name: "点阵", en: "DOT FIELD" },
+	{ name: "圆片", en: "QUARTER DISCS" },
+];
+
+export function calculateGenerativeLayout(config: WallpaperConfig, now: Date): GenerativeLayout {
+	const { width, height } = config;
+	const frame = posterFrame(width, height);
+	const { index } = getDayOfYearInfo(now);
+	const epochDays = Math.floor(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()) / 86400000);
+	const rng = mulberry32(epochDays * 2654435761 + 97);
+	const range = (a: number, b: number) => a + rng() * (b - a);
+	const algoIndex = ((index % 4) + 4) % 4;
+	const algo = GEN_ALGOS[algoIndex];
+	const seedLabel = ((epochDays * 2654435761) >>> 0) % 0x10000;
+	const paths: GenPath[] = [];
+	const dots: MotifCircle[] = [];
+	const ax0 = frame.marginX;
+	const ax1 = frame.rightX;
+	const ay0 = height * 0.225;
+	const ay1 = height * 0.825;
+	const aw = ax1 - ax0;
+	const ah = ay1 - ay0;
+
+	if (algoIndex === 0) {
+		const cols = 4;
+		const cell = aw / cols;
+		const rows = Math.max(2, Math.floor(ah / cell));
+		const top = ay0 + (ah - rows * cell) / 2;
+		for (let row = 0; row < rows; row += 1) {
+			for (let col = 0; col < cols; col += 1) {
+				const x = ax0 + col * cell;
+				const y = top + row * cell;
+				const corner = Math.floor(rng() * 4);
+				const rad = cell * 0.5;
+				const accent = rng() < 0.12;
+				const arcs: Array<[number, number, number, number]> = [
+					[x + rad, y, x, y + rad],
+					[x + cell, y + rad, x + cell - rad, y],
+					[x + cell - rad, y + cell, x + cell, y + cell - rad],
+					[x, y + cell - rad, x + rad, y + cell],
+				];
+				const centers: Array<[number, number]> = [[x, y], [x + cell, y], [x + cell, y + cell], [x, y + cell]];
+				const [sx, sy, ex, ey] = arcs[corner];
+				void centers;
+				paths.push({ d: `M ${r1(sx)} ${r1(sy)} A ${r1(rad)} ${r1(rad)} 0 0 1 ${r1(ex)} ${r1(ey)}`, width: Math.max(1.5, width * 0.0026), accent });
+				if (rng() < 0.22) {
+					const rad2 = cell * 0.27;
+					const off = rad - rad2;
+					const [sx2, sy2, ex2, ey2] = arcs[corner];
+					const cx0 = centers[corner][0];
+					const cy0 = centers[corner][1];
+					const shrink = (px: number, py: number) => [cx0 + (px - cx0) * (rad2 / rad) + (px === cx0 ? 0 : 0), cy0 + (py - cy0) * (rad2 / rad)];
+					void off;
+					const [ax, ay] = shrink(sx2, sy2);
+					const [bx, by] = shrink(ex2, ey2);
+					paths.push({ d: `M ${r1(ax)} ${r1(ay)} A ${r1(rad2)} ${r1(rad2)} 0 0 1 ${r1(bx)} ${r1(by)}`, width: Math.max(1.5, width * 0.0026), accent });
+				}
+			}
+		}
+	} else if (algoIndex === 1) {
+		const cx = width / 2 + range(-0.03, 0.03) * width;
+		const cy = (ay0 + ay1) / 2;
+		const baseR = Math.min(aw, ah) * 0.082;
+		const phase1 = rng() * Math.PI * 2;
+		const phase2 = rng() * Math.PI * 2;
+		const rings = 6;
+		for (let i = 1; i <= rings; i += 1) {
+			const R = baseR * i * range(0.94, 1.04);
+			const points: string[] = [];
+			const steps = 30;
+			for (let sIdx = 0; sIdx <= steps; sIdx += 1) {
+				const theta = (sIdx / steps) * Math.PI * 2;
+				const rr = R * (1 + 0.12 * Math.sin(3 * theta + phase1) + 0.06 * Math.sin(6 * theta - phase2));
+				points.push(`${sIdx === 0 ? "M" : "L"} ${r1(cx + Math.cos(theta) * rr)} ${r1(cy + Math.sin(theta) * rr * 0.98)}`);
+			}
+			paths.push({ d: points.join(" ") + " Z", width: Math.max(1.5, width * 0.0024), accent: i === 4 });
+		}
+		dots.push({ cx, cy, r: Math.max(2.5, width * 0.006), width: 0, filled: true, accent: true, opacity: 1 });
+	} else if (algoIndex === 2) {
+		const cols = 10;
+		const cell = aw / cols;
+		const rows = Math.max(3, Math.floor(ah / cell));
+		const top = ay0 + (ah - rows * cell) / 2;
+		const phase1 = rng() * Math.PI * 2;
+		const phase2 = rng() * Math.PI * 2;
+		const fx = range(0.6, 1.1);
+		const fy = range(0.5, 0.9);
+		for (let row = 0; row < rows; row += 1) {
+			for (let col = 0; col < cols; col += 1) {
+				const v = 0.5 + 0.5 * Math.sin(col * fx + phase1) * Math.cos(row * fy + phase2);
+				const rr = Math.max(cell * 0.05, cell * 0.37 * Math.pow(v, 1.6));
+				dots.push({ cx: ax0 + (col + 0.5) * cell, cy: top + (row + 0.5) * cell, r: rr, width: 0, filled: true, accent: v > 0.88, opacity: 0.95 });
+			}
+		}
+	} else {
+		const cols = 4;
+		const cell = aw / cols;
+		const rows = Math.max(2, Math.floor(ah / cell));
+		const top = ay0 + (ah - rows * cell) / 2;
+		for (let row = 0; row < rows; row += 1) {
+			for (let col = 0; col < cols; col += 1) {
+				const cx = ax0 + (col + 0.5) * cell;
+				const cy = top + (row + 0.5) * cell;
+				const rad = cell * 0.46;
+				const quad = Math.floor(rng() * 4);
+				const accent = rng() < 0.16;
+				const ends: Array<[number, number, number, number, number]> = [
+					[cx + rad, cy, cx, cy + rad, 1],
+					[cx, cy + rad, cx - rad, cy, 1],
+					[cx - rad, cy, cx, cy - rad, 1],
+					[cx, cy - rad, cx + rad, cy, 1],
+				];
+				const [sx, sy, ex, ey] = ends[quad];
+				paths.push({ d: `M ${r1(cx)} ${r1(cy)} L ${r1(sx)} ${r1(sy)} A ${r1(rad)} ${r1(rad)} 0 0 1 ${r1(ex)} ${r1(ey)} Z`, width: 0, filled: true, accent, opacity: 0.92 });
+			}
+		}
+	}
+
+	return {
+		frame,
+		algoName: algo.name,
+		algoEn: algo.en,
+		seedLabel: seedLabel.toString(16).toUpperCase().padStart(4, "0"),
+		paths,
+		dots,
+	};
+}
+
+// ---------------------------------------------------------------------------
+// moon — 月相: tonight's real moon phase, drawn with a true terminator.
+// ---------------------------------------------------------------------------
+
+export interface MoonLayout {
+	frame: PosterFrame;
+	cx: number;
+	cy: number;
+	r: number;
+	litPath: string;
+	darkCircle: MotifCircle;
+	ringCircle: MotifCircle;
+	stars: MotifCircle[];
+	phaseName: string;
+	note: string;
+	illumPct: number;
+	age: number;
+	waxing: boolean;
+	nameY: number;
+	nameSize: number;
+	noteY: number;
+	noteSize: number;
+	metaSize: number;
+}
+
+const SYNODIC = 29.530588853;
+const NEW_MOON_EPOCH = Date.UTC(2000, 0, 6, 18, 14);
+
+const MOON_PHASES: Array<{ name: string; note: string }> = [
+	{ name: "朔月", note: "月与日同升，新月不可见" },
+	{ name: "娥眉月", note: "眉如远山，初见于西方低空" },
+	{ name: "上弦月", note: "半个月亮，弦直如弓" },
+	{ name: "盈凸月", note: "渐盈渐满，月华日盛" },
+	{ name: "望月", note: "满月当空，清辉遍地" },
+	{ name: "亏凸月", note: "满后渐亏，盛极而衰" },
+	{ name: "下弦月", note: "半轮残月，见于东方" },
+	{ name: "残月", note: "残月如钩，晓风未起" },
+	{ name: "晦月", note: "月尽晦暗，静待新轮" },
+];
+
+function moonPhaseIndex(age: number): number {
+	if (age < 1 || age > SYNODIC - 1) return 0;
+	if (Math.abs(age - 7.38) < 1.3) return 2;
+	if (Math.abs(age - 14.77) < 1.4) return 4;
+	if (Math.abs(age - 22.15) < 1.3) return 6;
+	if (age < 7.38) return 1;
+	if (age < 14.77) return 3;
+	if (age < 22.15) return 5;
+	if (age < SYNODIC - 1.4) return 7;
+	return 8;
+}
+
+export function calculateMoonLayout(config: WallpaperConfig, now: Date): MoonLayout {
+	const { width, height } = config;
+	const frame = posterFrame(width, height);
+	const age = (((now.getTime() - NEW_MOON_EPOCH) / 86400000) % SYNODIC + SYNODIC) % SYNODIC;
+	const theta = (age / SYNODIC) * Math.PI * 2;
+	const illum = (1 - Math.cos(theta)) / 2;
+	const waxing = age < SYNODIC / 2;
+	const phase = MOON_PHASES[moonPhaseIndex(age)];
+	const cx = width / 2;
+	const cy = height * 0.40;
+	const r = Math.min(width * 0.295, height * 0.165);
+	const cosT = Math.cos(theta);
+	const rt = Math.max(r * 0.02, r * Math.abs(cosT));
+	const sweep = (waxing === (cosT > 0)) ? 0 : 1;
+	const litPath = waxing
+		? `M ${r1(cx)} ${r1(cy - r)} A ${r1(r)} ${r1(r)} 0 0 1 ${r1(cx)} ${r1(cy + r)} A ${r1(rt)} ${r1(r)} 0 0 ${sweep} ${r1(cx)} ${r1(cy - r)} Z`
+		: `M ${r1(cx)} ${r1(cy - r)} A ${r1(r)} ${r1(r)} 0 0 0 ${r1(cx)} ${r1(cy + r)} A ${r1(rt)} ${r1(r)} 0 0 ${sweep} ${r1(cx)} ${r1(cy - r)} Z`;
+	const rng = mulberry32(Math.floor(age * 10) * 31 + 7);
+	const stars: MotifCircle[] = [];
+	for (let i = 0; i < 14; i += 1) {
+		const sx = frame.marginX + rng() * frame.contentWidth;
+		const sy = height * (0.20 + rng() * 0.48);
+		if (Math.hypot(sx - cx, sy - cy) < r * 1.25) continue;
+		stars.push({ cx: sx, cy: sy, r: Math.max(1.6, width * 0.0028) * (0.6 + rng() * 0.9), width: 0, filled: true, opacity: 0.25 + rng() * 0.4, accent: i === 0 });
+	}
+	return {
+		frame,
+		cx,
+		cy,
+		r,
+		litPath,
+		darkCircle: { cx, cy, r, width: 0, filled: true, fill: config.theme.text, opacity: 0.07 },
+		ringCircle: { cx, cy, r, width: Math.max(1.2, width * 0.0016), opacity: 0.5 },
+		stars,
+		phaseName: phase.name,
+		note: phase.note,
+		illumPct: Math.round(illum * 100),
+		age,
+		waxing,
+		nameY: height * 0.665,
+		nameSize: Math.min(width * 0.135, height * 0.075),
+		noteY: height * 0.728,
+		noteSize: Math.min(width * 0.036, height * 0.023),
+		metaSize: Math.min(width * 0.031, height * 0.02),
+	};
+}
+
