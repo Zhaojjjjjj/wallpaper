@@ -12,6 +12,10 @@ interface StyleSelectorProps {
 
 const STYLES: { id: WallpaperType; name: string; desc: string }[] = [
 	{ id: "calendar", name: "日历", desc: "每日一页，一天一句" },
+	{ id: "stroke", name: "一笔", desc: "每天只有一笔，其余留白" },
+	{ id: "lewitt", name: "指令", desc: "每天执行一条几何指令" },
+	{ id: "albers", name: "色彩", desc: "颜色是关系，不是清单" },
+	{ id: "solar", name: "太阳弧", desc: "今天真实的太阳轨迹" },
 	{ id: "color", name: "每日一色", desc: "每天一种中国传统色" },
 	{ id: "character", name: "每日一字", desc: "每天一个汉字，带字源" },
 	{ id: "generative", name: "生成", desc: "以日子为种子的抽象构图" },

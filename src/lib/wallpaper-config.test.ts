@@ -427,3 +427,49 @@ test("moon layout follows the real lunar cycle", () => {
 	assert.ok(firstQuarter.waxing);
 	assert.ok(fullMoon.litPath.includes(" A "));
 });
+
+import { calculateStrokeLayout, calculateLewittLayout, calculateAlbersLayout, calculateSolarLayout, ALBERS_SETS } from "./wallpaper-layout";
+
+test("one stroke a day: deterministic, four families rotate, paths finite", () => {
+	const make = (date: Date) => calculateStrokeLayout({ type: "stroke", width: 1179, height: 2556, theme: sampleTheme }, date);
+	const a = make(new Date(2026, 10, 9, 12));
+	const b = make(new Date(2026, 10, 9, 20));
+	assert.equal(a.mainPath, b.mainPath);
+	assert.ok(a.mainPath.length > 200 && !a.mainPath.includes("NaN"));
+	const families = new Set([0, 1, 2, 3].map((o) => make(new Date(2026, 10, 9 + o, 12)).familyEn));
+	assert.equal(families.size, 4);
+});
+
+test("lewitt instructions rotate and produce bounded geometry", () => {
+	const make = (date: Date) => calculateLewittLayout({ type: "lewitt", width: 1179, height: 2556, theme: sampleTheme }, date);
+	const sets = new Set([0, 1, 2, 3].map((o) => make(new Date(2026, 10, 9 + o, 12)).instructionEn));
+	assert.equal(sets.size, 4);
+	for (let o = 0; o < 4; o += 1) {
+		const layout = make(new Date(2026, 10, 9 + o, 12));
+		const total = layout.lines.length + layout.circles.length + layout.paths.length;
+		assert.ok(total > 10 && total < 400, `set ${o}: ${total} elements`);
+		for (const path of layout.paths) assert.ok(!path.d.includes("NaN"));
+	}
+});
+
+test("albers studies cycle curated relationship sets", () => {
+	assert.equal(ALBERS_SETS.length, 16);
+	assert.equal(new Set(ALBERS_SETS.map((s) => s.grounds.join("/"))).size, 16);
+	const make = (date: Date) => calculateAlbersLayout({ type: "albers", width: 1179, height: 2556, theme: sampleTheme }, date);
+	const split = make(new Date(2026, 10, 17, 12)); // day index 320 -> set 0 (split)
+	assert.equal(split.set.mode, "split");
+	assert.equal(split.rects.length, 4);
+	assert.notEqual(split.inkLeft, undefined);
+});
+
+test("solar arc is longer and higher in summer than winter", () => {
+	const make = (date: Date) => calculateSolarLayout({ type: "solar", width: 1179, height: 2556, theme: sampleTheme }, date);
+	const summer = make(new Date(2026, 5, 21, 12));
+	const winter = make(new Date(2026, 11, 21, 12));
+	assert.ok(summer.dayLengthText > winter.dayLengthText || summer.setX - summer.riseX > winter.setX - winter.riseX);
+	assert.ok(summer.setX - summer.riseX > winter.setX - winter.riseX, "summer arc wider");
+	assert.match(summer.dayLengthText, /白昼 1[45] 小时/);
+	assert.match(winter.dayLengthText, /白昼 9 小时/);
+	const today = make(new Date(2026, 10, 9, 12));
+	assert.ok(today.arcPath.includes("L") && !today.arcPath.includes("NaN"));
+});

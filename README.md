@@ -17,6 +17,10 @@ re-download it daily and your wallpaper always shows today's progress.
 | `color` | 每日一色： one of 100 Chinese traditional colors fills the whole field each day — name in giant type, an imagery note, HEX/RGB/CMYK values and a five-step spectrum derived from the day's color; no dates anywhere |
 | `character` | 每日一字： one of 182 Chinese characters a day, poster-large, with pinyin and a one-line note on its origin or meaning |
 | `generative` | 每日生成： a procedural study seeded by the day — four algorithms rotate (quarter arcs, wobbly contours, a dot interference field, quarter discs); the artwork changes completely every day and shows nothing but a seed code |
+| `stroke` | 一笔： one generated calligraphic stroke per day — four seeded families (sweep, ensō, descent, ascent) with pressure, a press bulge and dry-brush tail splits; everything else is negative space and a small seal |
+| `lewitt` | 指令： a different Sol LeWitt-style wall-drawing instruction is executed daily (radiating lines, offset concentric squares, a chance-mark grid, parallel bands), and the instruction itself is printed on the wallpaper |
+| `albers` | 色彩： a Josef Albers colour-relationship study a day from 16 curated sets — one colour that reads as two on split grounds, nested squares, and equal-value complementary pairs whose boundary vibrates; colour as relationship, not a swatch |
+| `solar` | 太阳弧： today's true sun path at 38.04°N on a fixed angular scale — the arc is wider and higher in summer, shorter in winter; the sun marker sits at the render-time solar position, with day length, noon altitude and declination |
 | `moon` | 月相： tonight's real moon phase, computed from the synodic cycle and drawn with a true elliptical terminator — phase name, illumination and moon age, no calendar dates |
 
 ## Development
@@ -49,7 +53,7 @@ Supported query parameters:
 
 | Parameter | Description |
 | --- | --- |
-| `type` | `month`, `calendar`, `minimal`, `color`, `character`, `generative`, or `moon` |
+| `type` | `month`, `calendar`, `minimal`, `color`, `character`, `generative`, `moon`, `stroke`, `lewitt`, `albers`, or `solar` |
 | `width`, `height` | Output dimensions; normalized to the global pixel budget |
 | `bg`, `accent`, `text` | Six-digit hexadecimal colors |
 | `timeZone` | IANA time zone such as `Asia/Shanghai` |

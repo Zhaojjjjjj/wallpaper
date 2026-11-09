@@ -870,3 +870,444 @@ export function calculateMoonLayout(config: WallpaperConfig, now: Date): MoonLay
 	};
 }
 
+
+// ---------------------------------------------------------------------------
+// stroke — 一笔: one generated calligraphic stroke, nothing else.
+// ---------------------------------------------------------------------------
+
+export interface StrokeLayout {
+	frame: PosterFrame;
+	familyName: string;
+	familyEn: string;
+	haloPath: string;
+	mainPath: string;
+	dryPaths: string[];
+	sealX: number;
+	sealY: number;
+	sealSize: number;
+	seedLabel: string;
+}
+
+const STROKE_FAMILIES = [
+	{ name: "横扫", en: "SWEEP" },
+	{ name: "圆相", en: "ENSŌ" },
+	{ name: "垂笔", en: "DESCENT" },
+	{ name: "斜飞", en: "ASCENT" },
+];
+
+function sampleCatmullRom(points: Array<[number, number]>, samples: number): Array<[number, number]> {
+	const out: Array<[number, number]> = [];
+	const padded = [points[0], ...points, points[points.length - 1]];
+	for (let i = 0; i < padded.length - 3; i += 1) {
+		const [p0, p1, p2, p3] = [padded[i], padded[i + 1], padded[i + 2], padded[i + 3]];
+		const steps = Math.max(4, Math.round(samples / (points.length - 1)));
+		for (let sIdx = 0; sIdx < steps; sIdx += 1) {
+			const t = sIdx / steps;
+			const t2 = t * t;
+			const t3 = t2 * t;
+			out.push([
+				0.5 * (2 * p1[0] + (-p0[0] + p2[0]) * t + (2 * p0[0] - 5 * p1[0] + 4 * p2[0] - p3[0]) * t2 + (-p0[0] + 3 * p1[0] - 3 * p2[0] + p3[0]) * t3),
+				0.5 * (2 * p1[1] + (-p0[1] + p2[1]) * t + (2 * p0[1] - 5 * p1[1] + 4 * p2[1] - p3[1]) * t2 + (-p0[1] + 3 * p1[1] - 3 * p2[1] + p3[1]) * t3),
+			]);
+		}
+	}
+	out.push(points[points.length - 1]);
+	return out;
+}
+
+function strokeOutline(centerline: Array<[number, number]>, widths: number[]): string {
+	const left: Array<[number, number]> = [];
+	const right: Array<[number, number]> = [];
+	for (let i = 0; i < centerline.length; i += 1) {
+		const [x, y] = centerline[i];
+		const [px, py] = centerline[Math.max(0, i - 1)];
+		const [nx, ny] = centerline[Math.min(centerline.length - 1, i + 1)];
+		const dx = nx - px;
+		const dy = ny - py;
+		const len = Math.hypot(dx, dy) || 1;
+		const half = widths[i] / 2;
+		left.push([x - (dy / len) * half, y + (dx / len) * half]);
+		right.push([x + (dy / len) * half, y - (dx / len) * half]);
+	}
+	const pts = [...left, ...right.reverse()];
+	return pts.map(([x, y], i) => `${i === 0 ? "M" : "L"} ${r1(x)} ${r1(y)}`).join(" ") + " Z";
+}
+
+export function calculateStrokeLayout(config: WallpaperConfig, now: Date): StrokeLayout {
+	const { width, height } = config;
+	const frame = posterFrame(width, height);
+	const { index } = getDayOfYearInfo(now);
+	const epochDays = Math.floor(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()) / 86400000);
+	const rng = mulberry32(epochDays * 2654435761 + 41);
+	const range = (a: number, b: number) => a + rng() * (b - a);
+	const familyIndex = ((index % 4) + 4) % 4;
+	const family = STROKE_FAMILIES[familyIndex];
+	const cx = width / 2;
+	const cy = height * 0.44;
+	const ux = width * 0.335;
+	const uy = height * 0.145;
+	const toPx = (pts: Array<[number, number]>) => pts.map(([x, y]): [number, number] => [cx + x * ux, cy + y * uy]);
+
+	let centerline: Array<[number, number]>;
+	let widthAt: (t: number) => number;
+	const baseW = width * 0.085;
+
+	if (familyIndex === 1) {
+		// Ensō: a near-full circle, thick where the brush lands, thinning to the gap.
+		const start = range(-0.5, 0.4);
+		const sweep = range(4.9, 5.6);
+		const radius = range(0.82, 0.95);
+		centerline = [];
+		const steps = 64;
+		for (let i = 0; i <= steps; i += 1) {
+			const a = start + (i / steps) * sweep;
+			centerline.push([cx + Math.cos(a) * radius * ux, cy + Math.sin(a) * radius * uy * 1.35]);
+		}
+		widthAt = (t) => baseW * (0.22 + 0.95 * Math.pow(Math.sin(Math.PI * Math.min(1, 0.12 + t * 0.94)), 0.65));
+	} else {
+		const controls: Record<number, Array<[number, number]>> = {
+			0: [[-0.92, range(0.1, 0.3)], [-0.45, range(-0.35, -0.05)], [0.1, range(-0.1, 0.2)], [0.55, range(-0.35, 0.0)], [0.95, range(-0.55, -0.25)]],
+			2: [[range(-0.05, 0.2), -0.95], [range(-0.15, 0.1), -0.35], [range(0.0, 0.2), 0.3], [range(-0.1, 0.1), 0.78], [range(-0.55, -0.3), range(0.9, 1.05)]],
+			3: [[-0.9, range(0.65, 0.9)], [-0.4, range(0.25, 0.5)], [0.15, range(-0.2, 0.05)], [0.6, range(-0.55, -0.3)], [0.92, range(-0.95, -0.7)]],
+		};
+		centerline = toPx(sampleCatmullRom(controls[familyIndex], 72));
+		const bulgeCenter = range(0.3, 0.42);
+		widthAt = (t) => baseW
+			* (0.22 + 0.85 * Math.pow(Math.sin(Math.PI * Math.min(1, 0.06 + t * 0.97)), 0.7))
+			* (1 + 0.45 * Math.exp(-Math.pow(t - bulgeCenter, 2) / 0.008))
+			* (t > 0.82 ? Math.max(0.25, 1 - (t - 0.82) * 3.4) : 1);
+	}
+	const widths = centerline.map((_, i) => widthAt(i / (centerline.length - 1)));
+	const haloWidths = widths.map((w) => w * 1.22 + width * 0.006);
+	// Dry-brush splits near the tail: two thin paper-coloured streaks inside the stroke.
+	const dryPaths: string[] = [];
+	for (const side of [-0.32, 0.3]) {
+		const streak: Array<[number, number]> = [];
+		const streakW: number[] = [];
+		const n = centerline.length;
+		for (let i = Math.floor(n * 0.55); i < n; i += 1) {
+			const [x, y] = centerline[i];
+			const [px, py] = centerline[Math.max(0, i - 1)];
+			const [nx, ny] = centerline[Math.min(n - 1, i + 1)];
+			const dx = nx - px;
+			const dy = ny - py;
+			const len = Math.hypot(dx, dy) || 1;
+			const off = widths[i] * side * 0.5;
+			streak.push([x - (dy / len) * off, y + (dx / len) * off]);
+			const fade = Math.min(1, (i - Math.floor(n * 0.55)) / (n * 0.14));
+			streakW.push(Math.max(0.6, widths[i] * 0.13 * fade));
+		}
+		if (streak.length > 3) dryPaths.push(strokeOutline(streak, streakW));
+	}
+	const sealSize = width * 0.058;
+	return {
+		frame,
+		familyName: family.name,
+		familyEn: family.en,
+		haloPath: strokeOutline(centerline, haloWidths),
+		mainPath: strokeOutline(centerline, widths),
+		dryPaths,
+		sealX: frame.rightX - sealSize,
+		sealY: height * 0.70,
+		sealSize,
+		seedLabel: (((epochDays * 2654435761) >>> 0) % 0x10000).toString(16).toUpperCase().padStart(4, "0"),
+	};
+}
+
+// ---------------------------------------------------------------------------
+// lewitt — 指令: a different geometric instruction is executed each day.
+// ---------------------------------------------------------------------------
+
+export interface LewittLayout {
+	frame: PosterFrame;
+	number: number;
+	instructionCn: string;
+	instructionEn: string;
+	lines: MotifLine[];
+	circles: MotifCircle[];
+	paths: GenPath[];
+	instrCnY: number;
+	instrCnSize: number;
+	instrEnY: number;
+	instrEnSize: number;
+}
+
+const LEWITT_SETS = [
+	{ cn: "短线从中心向四周散射，角度由随机偏移", en: "LINES RADIATE FROM THE CENTER, BY CHANCE" },
+	{ cn: "正方形逐层放大，每一层中心随机偏移", en: "SQUARES GROW, CENTERS SHIFTED BY CHANCE" },
+	{ cn: "网格之内，每格随机一笔：线、弧或圆", en: "ONE CHANCE MARK PER CELL: LINE, ARC, CIRCLE" },
+	{ cn: "平行线分作四带，每一带角度由随机决定", en: "PARALLEL LINES IN FOUR BANDS, BY CHANCE" },
+];
+
+export function calculateLewittLayout(config: WallpaperConfig, now: Date): LewittLayout {
+	const { width, height } = config;
+	const frame = posterFrame(width, height);
+	const { index } = getDayOfYearInfo(now);
+	const epochDays = Math.floor(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()) / 86400000);
+	const rng = mulberry32(epochDays * 2654435761 + 53);
+	const range = (a: number, b: number) => a + rng() * (b - a);
+	const setIndex = ((index % 4) + 4) % 4;
+	const set = LEWITT_SETS[setIndex];
+	const lines: MotifLine[] = [];
+	const circles: MotifCircle[] = [];
+	const paths: GenPath[] = [];
+	const ax0 = frame.marginX;
+	const ax1 = frame.rightX;
+	const ay0 = height * 0.215;
+	const ay1 = height * 0.775;
+	const aw = ax1 - ax0;
+	const ah = ay1 - ay0;
+	const strokeW = Math.max(1.4, width * 0.0021);
+
+	if (setIndex === 0) {
+		const cx = width / 2;
+		const cy = (ay0 + ay1) / 2;
+		for (let i = 0; i < 250; i += 1) {
+			const px = ax0 + rng() * aw;
+			const py = ay0 + rng() * ah;
+			const ang = Math.atan2(py - cy, px - cx) + range(-0.5, 0.5);
+			const len = width * range(0.016, 0.042);
+			lines.push({ x1: px, y1: py, x2: px + Math.cos(ang) * len, y2: py + Math.sin(ang) * len, width: strokeW, accent: rng() < 0.04 });
+		}
+	} else if (setIndex === 1) {
+		const layers = 13;
+		for (let i = 0; i < layers; i += 1) {
+			const t = i / (layers - 1);
+			const half = (0.035 + t * 0.465) * Math.min(aw, ah);
+			const ccx = width / 2 + (rng() - 0.5) * t * width * 0.07;
+			const ccy = (ay0 + ay1) / 2 + (rng() - 0.5) * t * height * 0.03;
+			paths.push({ d: `M ${r1(ccx - half)} ${r1(ccy - half)} H ${r1(ccx + half)} V ${r1(ccy + half)} H ${r1(ccx - half)} Z`, width: strokeW, accent: i === layers - 4 });
+		}
+	} else if (setIndex === 2) {
+		const cols = 4;
+		const cell = aw / cols;
+		const rows = Math.max(2, Math.floor(ah / cell));
+		const top = ay0 + (ah - rows * cell) / 2;
+		for (let row = 0; row < rows; row += 1) {
+			for (let col = 0; col < cols; col += 1) {
+				const x = ax0 + col * cell;
+				const y = top + row * cell;
+				const cx = x + cell / 2;
+				const cy = y + cell / 2;
+				const kind = Math.floor(rng() * 5);
+				const accent = rng() < 0.08;
+				const m = cell * 0.18;
+				if (kind === 0) lines.push({ x1: x + m, y1: y + m, x2: x + cell - m, y2: y + cell - m, width: strokeW, accent });
+				else if (kind === 1) lines.push({ x1: x + m, y1: y + cell - m, x2: x + cell - m, y2: y + m, width: strokeW, accent });
+				else if (kind === 2) paths.push({ d: `M ${r1(x + m)} ${r1(cy)} A ${r1(cell / 2 - m)} ${r1(cell / 2 - m)} 0 0 1 ${r1(cx)} ${r1(y + cell - m)}`, width: strokeW, accent });
+				else if (kind === 3) circles.push({ cx, cy, r: cell * 0.3, width: strokeW, accent });
+				else { lines.push({ x1: cx, y1: y + m, x2: cx, y2: y + cell - m, width: strokeW, accent }); lines.push({ x1: x + m, y1: cy, x2: x + cell - m, y2: cy, width: strokeW, accent }); }
+			}
+		}
+	} else {
+		const bands = 4;
+		const bandH = ah / bands;
+		for (let b = 0; b < bands; b += 1) {
+			const angle = range(-0.32, 0.32);
+			const spacing = width * range(0.016, 0.03);
+			const by = ay0 + b * bandH;
+			const accent = b === 1;
+			for (let x = ax0 - ah * 0.4; x < ax1 + ah * 0.4; x += spacing) {
+				const x1 = x;
+				const y1 = by + bandH * 0.12;
+				const x2 = x + Math.tan(angle) * bandH * 0.76;
+				const y2 = by + bandH * 0.88;
+				if (x2 < ax0 - 10 || x1 > ax1 + 10) continue;
+				lines.push({ x1, y1, x2, y2, width: strokeW, accent });
+			}
+		}
+	}
+
+	return {
+		frame,
+		number: 100 + (((epochDays * 2654435761) >>> 0) % 900),
+		instructionCn: set.cn,
+		instructionEn: set.en,
+		lines,
+		circles,
+		paths,
+		instrCnY: height * 0.83,
+		instrCnSize: Math.min(width * 0.036, height * 0.023),
+		instrEnY: height * 0.858,
+		instrEnSize: Math.min(width * 0.021, height * 0.014),
+	};
+}
+
+// ---------------------------------------------------------------------------
+// albers — 色彩: color is a relationship, not a swatch. Curated studies in
+// three modes: one colour that reads as two, nested squares, and a
+// complementary pair set vibrating at equal value.
+// ---------------------------------------------------------------------------
+
+export interface AlbersSet {
+	mode: "split" | "nested" | "vibration";
+	grounds: string[];
+	inners: string[];
+	name: string;
+	line: string;
+}
+
+export const ALBERS_SETS: readonly AlbersSet[] = [
+	{ mode: "split", grounds: ["#3E5C50", "#C4502F"], inners: ["#B98A44"], name: "同色异境", line: "同一块赭石，在深绿上偏冷，在砖红上偏暖" },
+	{ mode: "split", grounds: ["#2C3E6B", "#D9A441"], inners: ["#7A6A53"], name: "同色异境", line: "中间的灰，在蓝里发黄，在黄里发蓝" },
+	{ mode: "split", grounds: ["#101014", "#E8E2D4"], inners: ["#8C8578"], name: "明度之间", line: "同一个灰，在黑上是亮的，在白上是暗的" },
+	{ mode: "split", grounds: ["#5B2A3F", "#7FA3B8"], inners: ["#A67B5B"], name: "同色异境", line: "棕色没有变，变的是它身处的地方" },
+	{ mode: "split", grounds: ["#274156", "#C96F2E"], inners: ["#6E7B6A"], name: "冷暖之间", line: "灰绿在蓝灰里退后，在橙色里前进" },
+	{ mode: "split", grounds: ["#413C58", "#A8B89F"], inners: ["#96755A"], name: "同色异境", line: "眼睛读的不是颜色，是颜色的关系" },
+	{ mode: "nested", grounds: ["#E4DCC8"], inners: ["#C4502F", "#3E5C50"], name: "嵌套", line: "外层的暖，托着内层的冷向前" },
+	{ mode: "nested", grounds: ["#23232A"], inners: ["#D9A441", "#EDE6D6"], name: "嵌套", line: "深底之上，浅色像自己在发光" },
+	{ mode: "nested", grounds: ["#7A9B76"], inners: ["#2C3E6B", "#D96C4A"], name: "嵌套", line: "绿地之上，蓝退后，橙浮出" },
+	{ mode: "nested", grounds: ["#C96F2E"], inners: ["#EDE6D6", "#2C3E6B"], name: "嵌套", line: "暖色场里，一点冷蓝重得像锚" },
+	{ mode: "nested", grounds: ["#EDE6D6"], inners: ["#5B2A3F", "#C9A227"], name: "嵌套", line: "纸色为地，深紫与金互相称量" },
+	{ mode: "nested", grounds: ["#31556B"], inners: ["#E4DCC8", "#B5452F"], name: "嵌套", line: "冷场中央，红被衬得比本身更红" },
+	{ mode: "vibration", grounds: ["#C0392B"], inners: ["#1E7A46"], name: "振动边界", line: "红与绿明度相当时，边界开始发抖" },
+	{ mode: "vibration", grounds: ["#2745C9"], inners: ["#D96C1E"], name: "振动边界", line: "蓝与橙互为补色，相遇处光在跳" },
+	{ mode: "vibration", grounds: ["#7A1FA2"], inners: ["#9BA81C"], name: "振动边界", line: "紫与黄绿等量对峙，谁也不肯退后" },
+	{ mode: "vibration", grounds: ["#0E6E6E"], inners: ["#C4502F"], name: "振动边界", line: "等明度的对手，让视线无处停靠" },
+];
+
+export interface AlbersLayout {
+	frame: PosterFrame;
+	set: AlbersSet;
+	index: number;
+	total: number;
+	rects: GenPath[];
+	inkLeft: string;
+	inkRight: string;
+	nameY: number;
+	nameSize: number;
+	lineY: number;
+	lineSize: number;
+}
+
+export function calculateAlbersLayout(config: WallpaperConfig, now: Date): AlbersLayout {
+	const { width, height } = config;
+	const frame = posterFrame(width, height);
+	const { index } = getDayOfYearInfo(now);
+	const setIndex = ((index % ALBERS_SETS.length) + ALBERS_SETS.length) % ALBERS_SETS.length;
+	const set = ALBERS_SETS[setIndex];
+	const rects: GenPath[] = [];
+	const rect = (x: number, y: number, w: number, h: number, fill: string): GenPath => ({
+		d: `M ${r1(x)} ${r1(y)} H ${r1(x + w)} V ${r1(y + h)} H ${r1(x)} Z`,
+		width: 0,
+		filled: true,
+		fill,
+		opacity: 1,
+	});
+	const cy = height * 0.44;
+	if (set.mode === "split") {
+		rects.push(rect(0, 0, width / 2, height, set.grounds[0]));
+		rects.push(rect(width / 2, 0, width / 2, height, set.grounds[1]));
+		const s = width * 0.21;
+		rects.push(rect(width / 4 - s / 2, cy - s / 2, s, s, set.inners[0]));
+		rects.push(rect((3 * width) / 4 - s / 2, cy - s / 2, s, s, set.inners[0]));
+	} else {
+		rects.push(rect(0, 0, width, height, set.grounds[0]));
+		const sizes = set.mode === "nested" ? [0.58, 0.36, 0.19] : [0.58, 0.40, 0.22];
+		const fills = set.mode === "nested" ? [set.inners[0], set.inners[1]] : [set.inners[0], set.grounds[0]];
+		rects.push(rect(width / 2 - (width * sizes[0]) / 2, cy - (width * sizes[0]) / 2, width * sizes[0], width * sizes[0], fills[0]));
+		if (set.mode === "vibration") {
+			rects.push(rect(width / 2 - (width * sizes[1]) / 2, cy - (width * sizes[1]) / 2, width * sizes[1], width * sizes[1], set.inners[0]));
+			rects.push(rect(width / 2 - (width * sizes[2]) / 2, cy - (width * sizes[2]) / 2, width * sizes[2], width * sizes[2], set.grounds[0]));
+		} else {
+			rects.push(rect(width / 2 - (width * sizes[1]) / 2, cy - (width * sizes[1]) / 2, width * sizes[1], width * sizes[1], fills[1]));
+		}
+	}
+	return {
+		frame,
+		set,
+		index: setIndex,
+		total: ALBERS_SETS.length,
+		rects,
+		inkLeft: inkForField(set.grounds[0]),
+		inkRight: inkForField(set.mode === "split" ? set.grounds[1] : set.grounds[0]),
+		nameY: height * 0.70,
+		nameSize: Math.min(width * 0.052, height * 0.033),
+		lineY: height * 0.748,
+		lineSize: Math.min(width * 0.033, height * 0.021),
+	};
+}
+
+// ---------------------------------------------------------------------------
+// solar — 太阳弧: today's true sun path at 38.04°N (Shijiazhuang), drawn as
+// an arc over a horizon line. Fixed angular scale, so the arc is visibly
+// wider and higher in summer, lower and shorter in winter.
+// ---------------------------------------------------------------------------
+
+export const SOLAR_LATITUDE = 38.04;
+
+export interface SolarLayout {
+	frame: PosterFrame;
+	arcPath: string;
+	belowPath: string;
+	horizonY: number;
+	sunX: number;
+	sunY: number;
+	sunVisible: boolean;
+	riseX: number;
+	setX: number;
+	dayLengthText: string;
+	noonAltText: string;
+	declinationText: string;
+	sunR: number;
+}
+
+export function calculateSolarLayout(config: WallpaperConfig, now: Date): SolarLayout {
+	const { width, height } = config;
+	const frame = posterFrame(width, height);
+	const { index } = getDayOfYearInfo(now);
+	const dayN = index + 1;
+	const phi = (SOLAR_LATITUDE * Math.PI) / 180;
+	const decl = (-23.44 * Math.cos(((2 * Math.PI) / 365) * (dayN + 10)) * Math.PI) / 180;
+	const cosW0 = Math.max(-1, Math.min(1, -Math.tan(phi) * Math.tan(decl)));
+	const w0 = Math.acos(cosW0);
+	const w0Deg = (w0 * 180) / Math.PI;
+	const dayLengthH = (2 * w0Deg) / 15;
+	const dlH = Math.floor(dayLengthH);
+	const dlM = Math.round((dayLengthH - dlH) * 60);
+	const noonAlt = 90 - Math.abs(SOLAR_LATITUDE - (decl * 180) / Math.PI);
+	const horizonY = height * 0.62;
+	const cx = width / 2;
+	const xScale = frame.contentWidth / 2 / 112; // px per degree of hour angle, fixed all year
+	const yScale = height * 0.0052; // px per degree of altitude
+	const point = (wDeg: number): [number, number] => {
+		const w = (wDeg * Math.PI) / 180;
+		const sinAlt = Math.sin(phi) * Math.sin(decl) + Math.cos(phi) * Math.cos(decl) * Math.cos(w);
+		const alt = (Math.asin(Math.max(-1, Math.min(1, sinAlt))) * 180) / Math.PI;
+		return [cx + wDeg * xScale, horizonY - alt * yScale];
+	};
+	const build = (from: number, to: number, above: boolean): string => {
+		const pts: string[] = [];
+		for (let w = from; w <= to; w += 2) {
+			const [x, y] = point(w);
+			if (above === (y <= horizonY)) pts.push(`${pts.length === 0 ? "M" : "L"} ${r1(x)} ${r1(y)}`);
+		}
+		return pts.join(" ");
+	};
+	const ext = 24;
+	const arcPath = build(-w0Deg, w0Deg, true);
+	const belowPath = build(-w0Deg - ext, -w0Deg, false) + " " + build(w0Deg, w0Deg + ext, false);
+	// The sun marker sits where the sun is at render time (solar time, with
+	// longitude and equation-of-time corrections for 114.51°E).
+	const clockH = now.getHours() + now.getMinutes() / 60 + now.getSeconds() / 3600;
+	const B = ((2 * Math.PI) / 364) * (dayN - 81);
+	const eot = 9.87 * Math.sin(2 * B) - 7.53 * Math.cos(B) - 1.5 * Math.sin(B);
+	const solarH = clockH + (114.51 - 120) * (4 / 60) + eot / 60;
+	const wNow = (solarH - 12) * 15;
+	const [sunX, sunY] = point(wNow);
+	return {
+		frame,
+		arcPath,
+		belowPath,
+		horizonY,
+		sunX,
+		sunY,
+		sunVisible: sunY <= horizonY,
+		riseX: cx - w0Deg * xScale,
+		setX: cx + w0Deg * xScale,
+		dayLengthText: `白昼 ${dlH} 小时 ${String(dlM).padStart(2, "0")} 分`,
+		noonAltText: `正午高度 ${noonAlt.toFixed(1)}°`,
+		declinationText: `赤纬 ${((decl * 180) / Math.PI).toFixed(1)}°`,
+		sunR: Math.max(5, width * 0.011),
+	};
+}
