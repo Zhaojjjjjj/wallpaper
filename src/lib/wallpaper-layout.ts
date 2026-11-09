@@ -435,6 +435,7 @@ export interface MotifCircle {
 	width: number;
 	accent?: boolean;
 	filled?: boolean;
+	bgFilled?: boolean;
 }
 
 export interface CalendarLayout {
@@ -498,56 +499,191 @@ function wrapQuote(quote: string, maxChars: number): string[] {
 		}
 	}
 	if (current) lines.push(current);
+	// Never leave a single orphan character on the last line.
+	if (lines.length >= 2 && lines[lines.length - 1].length === 1) {
+		const prev = lines[lines.length - 2];
+		lines[lines.length - 2] = prev.slice(0, -1);
+		lines[lines.length - 1] = prev.slice(-1) + lines[lines.length - 1];
+	}
 	return lines.slice(0, 3);
 }
 
-function calendarMotif(month: number, cx: number, cy: number, u: number): { lines: MotifLine[]; circles: MotifCircle[] } {
-	const line = (x1: number, y1: number, x2: number, y2: number, width = 2.5, accent = false): MotifLine => ({ x1: cx + x1 * u, y1: cy + y1 * u, x2: cx + x2 * u, y2: cy + y2 * u, width, accent });
-	const circle = (x: number, y: number, r: number, width = 2.5, accent = false, filled = false): MotifCircle => ({ cx: cx + x * u, cy: cy + y * u, r: r * u, width, accent, filled });
+function mulberry32(seed: number): () => number {
+	let a = seed >>> 0;
+	return () => {
+		a |= 0;
+		a = (a + 0x6d2b79f5) | 0;
+		let t = Math.imul(a ^ (a >>> 15), 1 | a);
+		t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+		return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+	};
+}
+
+/**
+ * The month's motif family, generated fresh for each day: a seeded RNG
+ * (day of year) drives element counts, positions, angles, mirroring and
+ * satellite marks, so no two days share a composition while the family's
+ * identity stays recognisable all month.
+ */
+function calendarMotif(month: number, cx: number, cy: number, u: number, seed: number): { lines: MotifLine[]; circles: MotifCircle[] } {
+	const rng = mulberry32(seed * 2654435761 + month * 97 + 13);
+	const range = (a: number, b: number) => a + rng() * (b - a);
+	const flip = rng() < 0.5 ? -1 : 1;
+	const rot = (x: number, y: number, rad: number): [number, number] => [x * Math.cos(rad) - y * Math.sin(rad), x * Math.sin(rad) + y * Math.cos(rad)];
+	const line = (x1: number, y1: number, x2: number, y2: number, width = 2.5, accent = false): MotifLine => ({ x1: cx + x1 * flip * u, y1: cy + y1 * u, x2: cx + x2 * flip * u, y2: cy + y2 * u, width, accent });
+	const rline = (x1: number, y1: number, x2: number, y2: number, rad: number, width = 2.5, accent = false): MotifLine => {
+		const [ax, ay] = rot(x1, y1, rad);
+		const [bx, by] = rot(x2, y2, rad);
+		return { x1: cx + ax * u, y1: cy + ay * u, x2: cx + bx * u, y2: cy + by * u, width, accent };
+	};
+	const circle = (x: number, y: number, r: number, width = 2.5, accent = false, filled = false, bgFilled = false): MotifCircle => ({ cx: cx + x * flip * u, cy: cy + y * u, r: r * u, width, accent, filled, bgFilled });
+	const lines: MotifLine[] = [];
+	const circles: MotifCircle[] = [];
+
 	switch (month) {
-		case 1: // 寒梅: bare branch with three blossoms, one in vermilion
-			return { lines: [line(-0.7, 0.75, 0.55, -0.7, 3), line(0.05, 0.05, 0.75, 0.15, 2)], circles: [circle(-0.28, 0.28, 0.13), circle(0.22, -0.3, 0.16, 2.5, true), circle(0.52, -0.62, 0.11)] };
-		case 2: // 春雨: cloud edge and three rain strokes
-			return { lines: [line(-0.8, -0.55, 0.8, -0.55, 2.5), line(-0.5, -0.2, -0.62, 0.5, 2), line(0, -0.2, -0.12, 0.62, 2), line(0.5, -0.2, 0.38, 0.5, 2)], circles: [] };
-		case 3: // 新芽: stem with two leaves
-			return { lines: [line(0, 0.8, 0, -0.5, 3), line(0, -0.1, -0.55, -0.55, 2.5), line(0, -0.3, 0.55, -0.75, 2.5), line(-0.6, 0.8, 0.6, 0.8, 2)], circles: [] };
-		case 4: // 落花: petals drifting down
-			return { lines: [], circles: [circle(-0.45, -0.6, 0.14), circle(0.05, -0.15, 0.11), circle(0.42, 0.35, 0.14, 2.5, true), circle(-0.1, 0.68, 0.09)] };
-		case 5: // 青叶: one leaf, stem and vein
-			return { lines: [line(0, 0.85, 0, -0.8, 2.5), line(0, -0.8, -0.55, 0.1, 2.5), line(-0.55, 0.1, 0, 0.85, 2.5), line(0, 0.85, 0.55, 0.1, 2.5), line(0.55, 0.1, 0, -0.8, 2.5)], circles: [] };
-		case 6: // 荷风: lotus over a water line
-			return { lines: [line(0, -0.75, -0.55, 0.25, 2.5), line(-0.55, 0.25, 0, 0.45, 2.5), line(0, 0.45, 0.55, 0.25, 2.5), line(0.55, 0.25, 0, -0.75, 2.5), line(-0.85, 0.72, 0.85, 0.72, 2)], circles: [] };
-		case 7: // 烈日: sun with eight rays
-			return {
-				lines: Array.from({ length: 8 }, (_, i) => {
-					const a = (i / 8) * Math.PI * 2;
-					return line(Math.cos(a) * 0.62, Math.sin(a) * 0.62, Math.cos(a) * 0.85, Math.sin(a) * 0.85, 2.5);
-				}),
-				circles: [circle(0, 0, 0.42, 3)],
+		case 1: { // 寒梅: branch bends differently, blossom count/placement daily
+			const bend = range(-0.15, 0.15);
+			lines.push(line(-0.75, 0.8, bend, 0.05, 3), line(bend, 0.05, 0.6, -0.72, 3), line(bend + 0.05, 0.12, range(0.55, 0.85), range(-0.05, 0.3), 2));
+			const blossoms = 3 + Math.floor(rng() * 4);
+			for (let i = 0; i < blossoms; i += 1) {
+				const t = rng();
+				circles.push(circle(-0.75 + (0.6 + 0.75) * t + range(-0.1, 0.1), 0.8 - 1.52 * t + range(-0.12, 0.12), range(0.09, 0.17), 2.5, i === 0));
+			}
+			break;
+		}
+		case 2: { // 春雨: stroke count, slant and length all daily
+			lines.push(line(-0.85, -0.62, range(-0.2, 0.2), -0.62, 2.5), line(range(0.3, 0.55), -0.62, 0.9, -0.62, 2.5));
+			const strokes = 4 + Math.floor(rng() * 5);
+			const slant = range(-0.28, 0.05);
+			for (let i = 0; i < strokes; i += 1) {
+				const x = -0.75 + (1.5 * i) / Math.max(strokes - 1, 1) + range(-0.06, 0.06);
+				const len = range(0.35, 0.8);
+				lines.push(line(x, -0.3, x + slant * len, -0.3 + len, 2));
+			}
+			break;
+		}
+		case 3: { // 新芽: one or two sprouts, leaf angles daily
+			const sprout = (ox: number, scale: number) => {
+				lines.push(line(ox, 0.8, ox, 0.8 - 1.1 * scale, 3));
+				lines.push(line(ox, 0.8 - 0.55 * scale, ox - 0.5 * scale * range(0.8, 1.3), 0.8 - 1.05 * scale, 2.5));
+				lines.push(line(ox, 0.8 - 0.8 * scale, ox + 0.5 * scale * range(0.8, 1.3), 0.8 - 1.3 * scale, 2.5));
 			};
-		case 8: // 海浪: two scalloped rows as zigzag
-			return {
-				lines: [
-					line(-0.9, -0.15, -0.45, -0.5, 2.5), line(-0.45, -0.5, 0, -0.15, 2.5), line(0, -0.15, 0.45, -0.5, 2.5), line(0.45, -0.5, 0.9, -0.15, 2.5),
-					line(-0.68, 0.45, -0.23, 0.1, 2.5), line(-0.23, 0.1, 0.22, 0.45, 2.5), line(0.22, 0.45, 0.67, 0.1, 2.5),
-				],
-				circles: [],
+			if (rng() < 0.5) { sprout(range(-0.15, 0.15), range(0.95, 1.15)); } else { sprout(-0.38, range(0.65, 0.85)); sprout(0.35, range(0.9, 1.1)); }
+			lines.push(line(-0.75, 0.8, 0.75, 0.8, 2));
+			break;
+		}
+		case 4: { // 落花: petals scatter along a daily fall path
+			const drift = range(-0.4, 0.4);
+			const petals = 4 + Math.floor(rng() * 4);
+			for (let i = 0; i < petals; i += 1) {
+				const t = i / Math.max(petals - 1, 1);
+				circles.push(circle(-0.55 + drift * t + range(-0.15, 0.15) + 0.9 * t * (drift >= 0 ? 1 : 0.4), -0.7 + 1.45 * t, range(0.08, 0.16), 2.5, i === petals - 2));
+			}
+			lines.push(line(-0.7, -0.85, -0.7 + drift * 0.4, -0.45, 2), line(0.55, 0.5, 0.62, 0.85, 2));
+			break;
+		}
+		case 5: { // 青叶: leaf rotates and breathes daily, sometimes a pair
+			const leaf = (ox: number, rad: number, scale: number) => {
+				lines.push(rline(ox, 0.85, ox, -0.8, rad, 2.5));
+				lines.push(rline(ox, -0.8, ox - 0.55, 0.1, rad, 2.5), rline(ox - 0.55, 0.1, ox, 0.85, rad, 2.5));
+				lines.push(rline(ox, 0.85, ox + 0.55, 0.1, rad, 2.5), rline(ox + 0.55, 0.1, ox, -0.8, rad, 2.5));
+				void scale;
 			};
-		case 9: // 秋月: full moon and one accent star
-			return { lines: [], circles: [circle(-0.15, 0, 0.55, 3), circle(0.68, -0.5, 0.05, 2, true, true)] };
-		case 10: // 柿子: fruit with calyx cross
-			return { lines: [line(0, -0.62, 0, -0.85, 3), line(-0.3, -0.55, 0.3, -0.55, 2.5)], circles: [circle(0, 0.15, 0.62, 3)] };
-		case 11: // 枯枝: main branch and twigs
-			return { lines: [line(-0.08, 0.85, 0.05, -0.8, 3.5), line(0.02, -0.15, 0.7, -0.6, 2.5), line(0, 0.25, -0.68, -0.25, 2.5), line(0.04, -0.42, 0.8, -0.45, 2)], circles: [] };
-		default: // 落雪: six-spoke snowflake
-			return {
-				lines: Array.from({ length: 3 }, (_, i) => {
-					const a = (i / 3) * Math.PI;
-					return line(-Math.cos(a) * 0.7, -Math.sin(a) * 0.7, Math.cos(a) * 0.7, Math.sin(a) * 0.7, 2.5);
-				}),
-				circles: [circle(0, 0, 0.1, 2.5)],
+			leaf(0, range(-0.45, 0.45), 1);
+			if (rng() < 0.35) leaf(range(-0.75, -0.55), range(-0.7, -0.3), 0.6);
+			break;
+		}
+		case 6: { // 荷风: lotus breath + water rows + optional bud
+			const spread = range(0.45, 0.65);
+			lines.push(line(0, -0.78, -spread, 0.22, 2.5), line(-spread, 0.22, 0, 0.42, 2.5), line(0, 0.42, spread, 0.22, 2.5), line(spread, 0.22, 0, -0.78, 2.5));
+			const rows = 1 + Math.floor(rng() * 3);
+			for (let i = 0; i < rows; i += 1) lines.push(line(-0.85 + i * 0.12, 0.66 + i * 0.14, 0.85 - i * 0.12, 0.66 + i * 0.14, 2));
+			if (rng() < 0.5) { const bx = range(0.55, 0.8); lines.push(line(bx, 0.35, bx - 0.14, 0.02, 2), line(bx - 0.14, 0.02, bx, -0.18, 2), line(bx, -0.18, bx + 0.14, 0.02, 2), line(bx + 0.14, 0.02, bx, 0.35, 2)); }
+			break;
+		}
+		case 7: { // 烈日: ray count, length and rotation daily
+			const rays = 6 + Math.floor(rng() * 7);
+			const offset = rng() * Math.PI;
+			const r = range(0.34, 0.46);
+			for (let i = 0; i < rays; i += 1) {
+				const a = offset + (i / rays) * Math.PI * 2;
+				const len = range(0.16, 0.34);
+				lines.push(line(Math.cos(a) * (r + 0.14), Math.sin(a) * (r + 0.14), Math.cos(a) * (r + 0.14 + len), Math.sin(a) * (r + 0.14 + len), 2.5));
+			}
+			circles.push(circle(0, 0, r, 3));
+			break;
+		}
+		case 8: { // 海浪: rows, peaks and phase daily
+			const rows = 2 + Math.floor(rng() * 2);
+			for (let r = 0; r < rows; r += 1) {
+				const y = -0.45 + r * 0.42;
+				const peaks = 3 + Math.floor(rng() * 2);
+				const phase = range(-0.2, 0.2);
+				for (let i = 0; i < peaks; i += 1) {
+					const x0 = -0.9 + (1.8 * i) / peaks + phase;
+					const x1 = -0.9 + (1.8 * (i + 0.5)) / peaks + phase;
+					const x2 = -0.9 + (1.8 * (i + 1)) / peaks + phase;
+					lines.push(line(x0, y + 0.16, x1, y - 0.18, 2.5), line(x1, y - 0.18, x2, y + 0.16, 2.5));
+				}
+			}
+			break;
+		}
+		case 9: { // 秋月: the phase follows a ~29.5-day cycle; stars scatter daily
+			const phase = ((seed % 295) / 295) * Math.PI * 2;
+			const offset = Math.cos(phase) * 0.95;
+			circles.push(circle(0, 0, 0.55, 3));
+			if (Math.abs(offset) < 0.88) circles.push(circle(offset * 0.55, range(-0.05, 0.05), 0.52, 1, false, true, true));
+			const stars = 1 + Math.floor(rng() * 4);
+			for (let i = 0; i < stars; i += 1) circles.push(circle(range(0.45, 0.95), range(-0.85, -0.3), range(0.03, 0.06), 2, i === 0, true));
+			break;
+		}
+		case 10: { // 柿子: a cluster of one to three fruits
+			const fruits = 1 + Math.floor(rng() * 3);
+			const spots: Array<[number, number, number]> = [[0, 0.1, 0.6], [-0.5, 0.42, 0.42], [0.52, 0.38, 0.46]];
+			for (let i = 0; i < fruits; i += 1) {
+				const [x, y, r] = spots[i];
+				circles.push(circle(x, y, r, 3));
+				lines.push(line(x, y - r - 0.04, x, y - r - 0.24, 3), line(x - 0.2, y - r + 0.03, x + 0.2, y - r + 0.03, 2.5));
+			}
+			lines.push(line(-0.85, -0.72, 0.85, -0.72, 2));
+			break;
+		}
+		case 11: { // 枯枝: twig count, attach points and angles daily
+			lines.push(line(-0.1, 0.85, -0.02, 0.1, 3.5), line(-0.02, 0.1, 0.06, -0.8, 3.5));
+			const twigs = 3 + Math.floor(rng() * 4);
+			for (let i = 0; i < twigs; i += 1) {
+				const t = rng();
+				const y = 0.55 - t * 1.15;
+				const side = rng() < 0.5 ? -1 : 1;
+				lines.push(line(0, y, side * range(0.35, 0.8), y - range(0.15, 0.5), 2));
+			}
+			if (rng() < 0.55) circles.push(circle(range(-0.8, 0.8), range(-0.85, -0.4), 0.055, 2, true, true));
+			break;
+		}
+		default: { // 落雪: main flake rotates; satellite flakes drift daily
+			const flake = (ox: number, oy: number, scale: number, rad: number) => {
+				const axes = 3 + Math.floor(rng() * 2);
+				for (let i = 0; i < axes; i += 1) {
+					const a = rad + (i / axes) * Math.PI;
+					lines.push(rline(ox - Math.cos(a) * 0.68 * scale, oy - Math.sin(a) * 0.68 * scale, ox + Math.cos(a) * 0.68 * scale, oy + Math.sin(a) * 0.68 * scale, 0, 2.5));
+				}
+				circles.push(circle(ox, oy, 0.09 * scale, 2.5));
 			};
+			flake(0, 0, range(0.9, 1.1), rng() * Math.PI);
+			const sats = 1 + Math.floor(rng() * 3);
+			for (let i = 0; i < sats; i += 1) flake(range(-0.95, 0.95), range(-0.9, 0.75), range(0.3, 0.45), rng() * Math.PI);
+			break;
+		}
 	}
+
+	// Satellites: a few quiet marks in seeded slots; count and accent vary daily.
+	const sats = Math.floor(rng() * 4);
+	for (let i = 0; i < sats; i += 1) {
+		const a = rng() * Math.PI * 2;
+		const dist = range(1.05, 1.3);
+		circles.push(circle(Math.cos(a) * dist, Math.sin(a) * dist * 0.8, range(0.028, 0.05), 2, i === 0 && rng() < 0.5, true));
+	}
+	return { lines, circles };
 }
 
 export function calculateCalendarLayout(config: WallpaperConfig, now: Date): CalendarLayout {
@@ -559,9 +695,10 @@ export function calculateCalendarLayout(config: WallpaperConfig, now: Date): Cal
 	const weekdayIndex = (now.getDay() + 6) % 7;
 	const motifCenterX = width / 2;
 	const motifCenterY = height * 0.572;
-	const motif = calendarMotif(month + 1, motifCenterX, motifCenterY, width * 0.16);
+	const motif = calendarMotif(month + 1, motifCenterX, motifCenterY, width * 0.16, index);
 	const quoteSize = Math.min(width * 0.04, height * 0.026);
-	const maxChars = Math.max(8, Math.floor(frame.contentWidth / (quoteSize * 1.04)));
+	// The seal stamps the quote block's top-right corner; keep lines clear of it.
+	const maxChars = Math.max(8, Math.floor((frame.contentWidth - width * 0.062 - width * 0.035) / (quoteSize * 1.04)));
 	const quoteLines = wrapQuote(quote, maxChars);
 	const sealSize = width * 0.062;
 	return {

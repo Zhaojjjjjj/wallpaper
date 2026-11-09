@@ -340,7 +340,8 @@ export class WallpaperEngine {
 			this.ctx.restore();
 		}
 		for (const circle of layout.motifCircles) {
-			if (circle.filled) this.dot(circle.cx, circle.cy, circle.r, circle.accent ? accent : text, 0.9);
+			if (circle.bgFilled) this.dot(circle.cx, circle.cy, circle.r, this.config.theme.bg, 1);
+			else if (circle.filled) this.dot(circle.cx, circle.cy, circle.r, circle.accent ? accent : text, 0.9);
 			else this.ring(circle.cx, circle.cy, circle.r, circle.accent ? accent : text, circle.width);
 		}
 		this.drawText(layout.motifName, this.width / 2, layout.motifCaptionY, layout.motifCaptionSize, "500", 0.5, { tracking: layout.motifCaptionSize * 0.5 });

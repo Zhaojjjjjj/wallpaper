@@ -343,9 +343,11 @@ function calendarParts(config: WallpaperConfig, now: Date): Parts {
 		shapes += `<line x1="${stroke.x1}" y1="${stroke.y1}" x2="${stroke.x2}" y2="${stroke.y2}" stroke="${stroke.accent ? accent : text}" stroke-opacity="0.85" stroke-width="${stroke.width}" stroke-linecap="round"/>`;
 	}
 	for (const circle of layout.motifCircles) {
-		shapes += circle.filled
-			? `<circle cx="${circle.cx}" cy="${circle.cy}" r="${circle.r}" fill="${circle.accent ? accent : text}" fill-opacity="0.9"/>`
-			: `<circle cx="${circle.cx}" cy="${circle.cy}" r="${circle.r}" fill="none" stroke="${circle.accent ? accent : text}" stroke-opacity="0.85" stroke-width="${circle.width}"/>`;
+		shapes += circle.bgFilled
+			? `<circle cx="${circle.cx}" cy="${circle.cy}" r="${circle.r}" fill="${bg}"/>`
+			: circle.filled
+				? `<circle cx="${circle.cx}" cy="${circle.cy}" r="${circle.r}" fill="${circle.accent ? accent : text}" fill-opacity="0.9"/>`
+				: `<circle cx="${circle.cx}" cy="${circle.cy}" r="${circle.r}" fill="none" stroke="${circle.accent ? accent : text}" stroke-opacity="0.85" stroke-width="${circle.width}"/>`;
 	}
 	shapes += `<rect x="${frame.marginX}" y="${layout.dashY}" width="${layout.dashWidth}" height="${Math.max(3, config.width * 0.006)}" fill="${accent}"/>`;
 	shapes += `<rect x="${layout.sealX}" y="${layout.sealY}" width="${layout.sealSize}" height="${layout.sealSize}" fill="${accent}"/>`;
