@@ -188,15 +188,12 @@ function lyricParts(config: WallpaperConfig, now: Date): Parts {
 	const { accent } = config.theme;
 	const frame = layout.frame;
 	const { excerpt } = layout;
-	const layers: WallpaperTextLayer[] = [
-		eyebrowLayer("歌词 · DAILY LYRIC", frame.marginX, frame.eyebrowY, frame.eyebrowSize, "left", 0.55),
-		eyebrowLayer(excerpt.artistEn, frame.rightX, frame.eyebrowY, frame.eyebrowSize, "right", 0.5),
-	];
+	// No eyebrow, no footer: the passage and its credit stand alone.
+	const layers: WallpaperTextLayer[] = [];
 	excerpt.lines.forEach((line, i) => {
 		layers.push({ text: line, x: frame.marginX, y: layout.firstLineY + i * layout.lineGap, size: layout.heroSize, weight: 500, opacity: 1, align: "left" });
 	});
 	layers.push({ text: `《${excerpt.song}》`, x: frame.marginX, y: layout.creditY, size: frame.footerSize * 1.4, weight: 500, opacity: 0.72, align: "left" });
-	layers.push(...footerLayers(`${excerpt.artist} · ${excerpt.artistEn}`, "歌词 · LYRICS", frame));
 	const dash = layout.dash;
 	const shapes = lineElement(dash.x1, dash.y1, dash.x2, dash.y2, accent, 1, dash.width ?? 3, true);
 	return { layers, shapes };

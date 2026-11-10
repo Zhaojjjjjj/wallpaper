@@ -652,8 +652,11 @@ export function calculateLyricLayout(config: WallpaperConfig, now: Date): LyricL
 	const cap = Math.min(width * 0.084, height * 0.05);
 	const heroSize = Math.min(cap, frame.contentWidth / (longest * 1.02));
 	const lineGap = heroSize * 1.62;
-	const centerY = height * 0.455;
-	const firstLineY = centerY - ((excerpt.lines.length - 1) * lineGap) / 2;
+	// The dash, the passage and the credit are centred as one block on the
+	// optical centre of the screen (just below halfway, clear of the clock).
+	const creditSize = frame.footerSize * 1.4;
+	const span = heroSize * 1.2 + (excerpt.lines.length - 1) * lineGap + heroSize * 1.45 + creditSize * 0.5;
+	const firstLineY = height * 0.485 - span / 2 + heroSize * 1.2;
 	const dash: MotifLine = {
 		x1: frame.marginX,
 		y1: firstLineY - heroSize * 1.2,
@@ -662,6 +665,6 @@ export function calculateLyricLayout(config: WallpaperConfig, now: Date): LyricL
 		accent: true,
 		width: Math.max(2, heroSize * 0.075),
 	};
-	const creditY = firstLineY + (excerpt.lines.length - 1) * lineGap + heroSize * 1.3;
+	const creditY = firstLineY + (excerpt.lines.length - 1) * lineGap + heroSize * 1.45;
 	return { frame, excerpt, heroSize, firstLineY, lineGap, dash, creditY };
 }

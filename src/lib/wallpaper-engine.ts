@@ -287,14 +287,11 @@ private drawMotifLines(lines: MotifLine[]) {
 		const layout = calculateLyricLayout(this.config, this.now);
 		const frame = layout.frame;
 		const { excerpt } = layout;
-		this.eyebrow("歌词 · DAILY LYRIC", frame.marginX, frame.eyebrowY, frame.eyebrowSize, "left", 0.55);
-		this.eyebrow(excerpt.artistEn, frame.rightX, frame.eyebrowY, frame.eyebrowSize, "right", 0.5);
 		this.drawMotifLines([layout.dash]);
 		excerpt.lines.forEach((line, i) => {
 			this.drawText(line, frame.marginX, layout.firstLineY + i * layout.lineGap, layout.heroSize, "500", 1, { align: "left" });
 		});
 		this.drawText(`《${excerpt.song}》`, frame.marginX, layout.creditY, frame.footerSize * 1.4, "500", 0.72, { align: "left" });
-		this.footer(`${excerpt.artist} · ${excerpt.artistEn}`, "歌词 · LYRICS", frame);
 	}
 
 	private drawGenerative() {
