@@ -2,17 +2,10 @@ import { WallpaperConfig } from "./types";
 import {
 	TRACK_OPACITY,
 	calculateCalendarLayout,
-	calculateCharacterLayout,
-	calculateColorLayout,
-	calculateAlbersLayout,
-	calculateGenerativeLayout,
-	calculateLewittLayout,
-	calculateMinimalLayout,
+				calculateGenerativeLayout,
+		calculateMinimalLayout,
 	calculateMonthLayout,
-	calculateMoonLayout,
-	calculateSolarLayout,
-	calculateStrokeLayout,
-} from "./wallpaper-layout";
+			} from "./wallpaper-layout";
 import type { MotifCircle, MotifLine } from "./wallpaper-layout";
 import { toWallClockDate } from "./wallpaper-progress";
 
@@ -173,48 +166,6 @@ function calendarParts(config: WallpaperConfig, now: Date): Parts {
 }
 
 
-function colorParts(config: WallpaperConfig, now: Date): Parts {
-	const layout = calculateColorLayout(config, now);
-	const { ink } = layout;
-	const frame = layout.frame;
-	const layers: WallpaperTextLayer[] = [
-		{ ...eyebrowLayer("中国传统色", frame.marginX, frame.eyebrowY, frame.eyebrowSize, "left", 0.7), color: ink },
-		{ ...eyebrowLayer("TRADITIONAL COLOR", frame.rightX, frame.eyebrowY, frame.eyebrowSize, "right", 0.5), color: ink },
-		{ text: layout.name, x: frame.marginX, y: layout.nameY, size: layout.nameSize, weight: 700, opacity: 1, align: "left", color: ink },
-		{ text: layout.note, x: frame.marginX, y: layout.noteY, size: layout.noteSize, weight: 500, opacity: 0.78, align: "left", color: ink },
-		{ text: "HEX", x: frame.marginX, y: layout.metaYs[0], size: layout.metaSize, weight: 600, opacity: 0.5, align: "left", color: ink, tracking: layout.metaSize * 0.2 },
-		{ text: layout.hexText, x: frame.rightX, y: layout.metaYs[0], size: layout.metaSize, weight: 500, opacity: 0.92, align: "right", color: ink },
-		{ text: "RGB", x: frame.marginX, y: layout.metaYs[1], size: layout.metaSize, weight: 600, opacity: 0.5, align: "left", color: ink, tracking: layout.metaSize * 0.2 },
-		{ text: layout.rgbText, x: frame.rightX, y: layout.metaYs[1], size: layout.metaSize, weight: 500, opacity: 0.92, align: "right", color: ink },
-		{ text: "CMYK", x: frame.marginX, y: layout.metaYs[2], size: layout.metaSize, weight: 600, opacity: 0.5, align: "left", color: ink, tracking: layout.metaSize * 0.2 },
-		{ text: layout.cmykText, x: frame.rightX, y: layout.metaYs[2], size: layout.metaSize, weight: 500, opacity: 0.92, align: "right", color: ink },
-		{ text: "每日一色 · A COLOR A DAY", x: frame.marginX, y: frame.footerY, size: frame.footerSize, weight: 500, opacity: 0.55, align: "left", color: ink, tracking: frame.footerSize * 0.14 },
-		{ text: `Nº ${String(layout.index + 1).padStart(3, "0")} / ${layout.total}`, x: frame.rightX, y: frame.footerY, size: frame.footerSize, weight: 500, opacity: 0.55, align: "right", color: ink, tracking: frame.footerSize * 0.14 },
-		{ text: "色谱 · SPECTRUM", x: frame.marginX, y: layout.swatchCaptionY, size: layout.metaSize * 0.85, weight: 600, opacity: 0.5, align: "left", color: ink, tracking: layout.metaSize * 0.2 },
-	];
-	let shapes = `<rect width="100%" height="100%" fill="${layout.field}"/>`;
-	shapes += motifLineElement(layout.rule, ink, ink);
-	for (const swatch of layout.swatches) shapes += motifCircleElement(swatch, ink, ink, layout.field);
-	shapes += motifCircleElement(layout.swatchRing, ink, ink, layout.field);
-	return { layers, shapes };
-}
-
-function characterParts(config: WallpaperConfig, now: Date): Parts {
-	const layout = calculateCharacterLayout(config, now);
-	const { accent } = config.theme;
-	const frame = layout.frame;
-	const layers: WallpaperTextLayer[] = [
-		eyebrowLayer("汉字 · CHINESE CHARACTER", frame.marginX, frame.eyebrowY, frame.eyebrowSize, "left", 0.55),
-		eyebrowLayer(layout.pinyin.toUpperCase(), frame.rightX, frame.eyebrowY, frame.eyebrowSize, "right", 0.5),
-		{ text: layout.char, x: config.width / 2, y: layout.charY, size: layout.charSize, weight: 600, opacity: 1 },
-		{ text: layout.pinyin, x: config.width / 2, y: layout.pinyinY, size: layout.pinyinSize, weight: 500, opacity: 0.55, tracking: layout.pinyinSize * 0.3 },
-		{ text: layout.note, x: config.width / 2, y: layout.noteY, size: layout.noteSize, weight: 500, opacity: 0.75 },
-		...footerLayers("每日一字 · A CHARACTER A DAY", `Nº ${String(layout.index + 1).padStart(3, "0")} / ${layout.total}`, frame),
-	];
-	const shapes = `<rect x="${config.width / 2 - layout.ruleWidth / 2}" y="${layout.ruleY}" width="${layout.ruleWidth}" height="${Math.max(3, config.width * 0.006)}" fill="${accent}"/>`;
-	return { layers, shapes };
-}
-
 function generativeParts(config: WallpaperConfig, now: Date): Parts {
 	const layout = calculateGenerativeLayout(config, now);
 	const { accent, text, bg } = config.theme;
@@ -234,119 +185,12 @@ function generativeParts(config: WallpaperConfig, now: Date): Parts {
 	return { layers, shapes };
 }
 
-function moonParts(config: WallpaperConfig, now: Date): Parts {
-	const layout = calculateMoonLayout(config, now);
-	const { accent, text, bg } = config.theme;
-	const frame = layout.frame;
-	const layers: WallpaperTextLayer[] = [
-		eyebrowLayer("月相 · MOON PHASE", frame.marginX, frame.eyebrowY, frame.eyebrowSize, "left", 0.55),
-		eyebrowLayer(layout.waxing ? "盈 · WAXING" : "亏 · WANING", frame.rightX, frame.eyebrowY, frame.eyebrowSize, "right", 0.5),
-		{ text: layout.phaseName, x: frame.marginX, y: layout.nameY, size: layout.nameSize, weight: 600, opacity: 1, align: "left" },
-		{ text: layout.note, x: frame.marginX, y: layout.noteY, size: layout.noteSize, weight: 500, opacity: 0.7, align: "left" },
-		{ text: `照亮 ${layout.illumPct}%`, x: frame.rightX, y: layout.nameY, size: layout.metaSize + 6, weight: 500, opacity: 0.9, align: "right" },
-		{ text: `月龄 ${layout.age.toFixed(1)} 天`, x: frame.rightX, y: layout.noteY, size: layout.metaSize, weight: 500, opacity: 0.55, align: "right" },
-		...footerLayers("月相 · LUNAR PHASE", layout.waxing ? "渐盈 · WAXING" : "渐亏 · WANING", frame),
-	];
-	let shapes = "";
-	for (const star of layout.stars) shapes += motifCircleElement(star, accent, text, bg);
-	shapes += motifCircleElement(layout.darkCircle, accent, text, bg);
-	shapes += pathElement(layout.litPath, text, 0.95);
-	shapes += motifCircleElement(layout.ringCircle, accent, text, bg);
-	return { layers, shapes };
-}
-
-
-function strokeParts(config: WallpaperConfig, now: Date): Parts {
-	const layout = calculateStrokeLayout(config, now);
-	const { accent, text, bg } = config.theme;
-	const frame = layout.frame;
-	const layers: WallpaperTextLayer[] = [
-		eyebrowLayer("一笔 · ONE STROKE", frame.marginX, frame.eyebrowY, frame.eyebrowSize, "left", 0.55),
-		eyebrowLayer(`${layout.familyName} · ${layout.familyEn}`, frame.rightX, frame.eyebrowY, frame.eyebrowSize, "right", 0.5),
-		{ text: "一", x: layout.sealX + layout.sealSize / 2, y: layout.sealY + layout.sealSize / 2, size: layout.sealSize * 0.58, weight: 700, opacity: 1, color: bg },
-		...footerLayers("每日一笔 · A STROKE A DAY", `SEED ${layout.seedLabel}`, frame),
-	];
-	let shapes = pathElement(layout.haloPath, text, 0.07);
-	shapes += pathElement(layout.mainPath, text, 0.96);
-	for (const dry of layout.dryPaths) shapes += pathElement(dry, bg, 0.5);
-	shapes += `<rect x="${layout.sealX}" y="${layout.sealY}" width="${layout.sealSize}" height="${layout.sealSize}" fill="${accent}"/>`;
-	return { layers, shapes };
-}
-
-function lewittParts(config: WallpaperConfig, now: Date): Parts {
-	const layout = calculateLewittLayout(config, now);
-	const { accent, text, bg } = config.theme;
-	const frame = layout.frame;
-	const layers: WallpaperTextLayer[] = [
-		eyebrowLayer("指令 · WALL DRAWING", frame.marginX, frame.eyebrowY, frame.eyebrowSize, "left", 0.55),
-		eyebrowLayer(`№ ${layout.number}`, frame.rightX, frame.eyebrowY, frame.eyebrowSize, "right", 0.5),
-		{ text: layout.instructionCn, x: frame.marginX, y: layout.instrCnY, size: layout.instrCnSize, weight: 500, opacity: 0.9, align: "left" },
-		{ text: layout.instructionEn, x: frame.marginX, y: layout.instrEnY, size: layout.instrEnSize, weight: 600, opacity: 0.45, align: "left", tracking: layout.instrEnSize * 0.16 },
-		...footerLayers("观念即作品", "AFTER SOL LEWITT", frame),
-	];
-	let shapes = "";
-	for (const stroke of layout.lines) shapes += motifLineElement(stroke, accent, text);
-	for (const circle of layout.circles) shapes += motifCircleElement(circle, accent, text, bg);
-	for (const path of layout.paths) shapes += path.filled
-		? pathElement(path.d, path.fill ?? (path.accent ? accent : text), path.opacity ?? 0.92)
-		: pathElement(path.d, null, path.opacity ?? 0.9, path.accent ? accent : text, path.width);
-	return { layers, shapes };
-}
-
-function albersParts(config: WallpaperConfig, now: Date): Parts {
-	const layout = calculateAlbersLayout(config, now);
-	const { set, inkLeft, inkRight } = layout;
-	const frame = layout.frame;
-	const layers: WallpaperTextLayer[] = [
-		{ ...eyebrowLayer("色彩关系", frame.marginX, frame.eyebrowY, frame.eyebrowSize, "left", 0.7), color: inkLeft },
-		{ ...eyebrowLayer("COLOR IS RELATIVE", frame.rightX, frame.eyebrowY, frame.eyebrowSize, "right", 0.55), color: inkRight },
-		{ text: set.name, x: frame.marginX, y: layout.nameY, size: layout.nameSize, weight: 600, opacity: 1, align: "left", color: inkLeft },
-		{ text: set.line, x: frame.marginX, y: layout.lineY, size: layout.lineSize, weight: 500, opacity: 0.75, align: "left", color: inkLeft },
-		{ text: `№ ${String(layout.index + 1).padStart(2, "0")} / ${layout.total}`, x: frame.rightX, y: layout.nameY, size: layout.lineSize, weight: 500, opacity: 0.6, align: "right", color: inkRight },
-		{ text: "色彩即关系", x: frame.marginX, y: frame.footerY, size: frame.footerSize, weight: 500, opacity: 0.55, align: "left", color: inkLeft, tracking: frame.footerSize * 0.14 },
-		{ text: "AFTER JOSEF ALBERS", x: frame.rightX, y: frame.footerY, size: frame.footerSize, weight: 500, opacity: 0.55, align: "right", color: inkRight, tracking: frame.footerSize * 0.14 },
-	];
-	let shapes = "";
-	for (const rectPath of layout.rects) shapes += pathElement(rectPath.d, rectPath.fill ?? "#000000", 1);
-	return { layers, shapes };
-}
-
-function solarParts(config: WallpaperConfig, now: Date): Parts {
-	const layout = calculateSolarLayout(config, now);
-	const { accent, text } = config.theme;
-	const frame = layout.frame;
-	const metaSize = Math.min(config.width * 0.031, config.height * 0.02);
-	const layers: WallpaperTextLayer[] = [
-		eyebrowLayer("太阳弧 · SOLAR ARC", frame.marginX, frame.eyebrowY, frame.eyebrowSize, "left", 0.55),
-		eyebrowLayer("北纬 38.04°", frame.rightX, frame.eyebrowY, frame.eyebrowSize, "right", 0.5),
-		{ text: "日出", x: layout.riseX, y: layout.horizonY + metaSize * 1.5, size: metaSize * 0.92, weight: 500, opacity: 0.5 },
-		{ text: "日落", x: layout.setX, y: layout.horizonY + metaSize * 1.5, size: metaSize * 0.92, weight: 500, opacity: 0.5 },
-		{ text: layout.dayLengthText, x: frame.marginX, y: config.height * 0.715, size: Math.min(config.width * 0.052, config.height * 0.033), weight: 600, opacity: 1, align: "left" },
-		{ text: layout.noonAltText, x: frame.marginX, y: config.height * 0.762, size: metaSize + 4, weight: 500, opacity: 0.6, align: "left" },
-		{ text: layout.declinationText, x: frame.rightX, y: config.height * 0.762, size: metaSize + 4, weight: 500, opacity: 0.6, align: "right" },
-		...footerLayers("太阳轨迹 · SUN PATH", "每日更新 · DAILY ARC", frame),
-	];
-	let shapes = pathElement(layout.belowPath, null, 0.22, text, Math.max(1.4, config.width * 0.002));
-	shapes += pathElement(layout.arcPath, null, 0.95, text, Math.max(1.8, config.width * 0.0028));
-	shapes += `<line x1="${frame.marginX - config.width * 0.02}" y1="${layout.horizonY}" x2="${frame.rightX + config.width * 0.02}" y2="${layout.horizonY}" stroke="${accent}" stroke-opacity="0.55" stroke-width="1.5"/>`;
-	shapes += `<circle cx="${layout.sunX}" cy="${layout.sunY}" r="${layout.sunR}" fill="${accent}" fill-opacity="${layout.sunVisible ? 1 : 0.35}"/>`;
-	shapes += `<circle cx="${layout.sunX}" cy="${layout.sunY}" r="${layout.sunR * 1.9}" fill="none" stroke="${accent}" stroke-opacity="${layout.sunVisible ? 0.5 : 0.2}" stroke-width="1.5"/>`;
-	return { layers, shapes };
-}
-
 function partsFor(config: WallpaperConfig, now: Date): Parts {
 	switch (config.type) {
 		case "month": return monthParts(config, now);
 		case "calendar": return calendarParts(config, now);
 		case "minimal": return minimalParts(config, now);
-		case "color": return colorParts(config, now);
-		case "character": return characterParts(config, now);
 		case "generative": return generativeParts(config, now);
-		case "moon": return moonParts(config, now);
-		case "stroke": return strokeParts(config, now);
-		case "lewitt": return lewittParts(config, now);
-		case "albers": return albersParts(config, now);
-		case "solar": return solarParts(config, now);
 	}
 }
 

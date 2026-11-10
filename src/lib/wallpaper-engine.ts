@@ -3,17 +3,10 @@ import { toWallClockDate } from "./wallpaper-progress";
 import {
 	TRACK_OPACITY,
 	calculateCalendarLayout,
-	calculateCharacterLayout,
-	calculateColorLayout,
-	calculateGenerativeLayout,
+			calculateGenerativeLayout,
 	calculateMinimalLayout,
-	calculateAlbersLayout,
-	calculateLewittLayout,
-	calculateMonthLayout,
-	calculateMoonLayout,
-	calculateSolarLayout,
-	calculateStrokeLayout,
-} from "./wallpaper-layout";
+			calculateMonthLayout,
+			} from "./wallpaper-layout";
 import type { GenPath, MotifCircle, MotifLine } from "./wallpaper-layout";
 
 type TextAlignOption = "left" | "center" | "right";
@@ -57,29 +50,8 @@ export class WallpaperEngine {
 			case "minimal":
 				this.drawMinimal();
 				break;
-			case "color":
-				this.drawColor();
-				break;
-			case "character":
-				this.drawCharacter();
-				break;
 			case "generative":
 				this.drawGenerative();
-				break;
-			case "moon":
-				this.drawMoon();
-				break;
-			case "stroke":
-				this.drawStroke();
-				break;
-			case "lewitt":
-				this.drawLewitt();
-				break;
-			case "albers":
-				this.drawAlbers();
-				break;
-			case "solar":
-				this.drawSolar();
 				break;
 		}
 	}
@@ -307,47 +279,6 @@ private drawMotifLines(lines: MotifLine[]) {
 		}
 	}
 
-	private drawColor() {
-		const layout = calculateColorLayout(this.config, this.now);
-		const { ink } = layout;
-		const frame = layout.frame;
-		this.ctx.save();
-		this.ctx.fillStyle = layout.field;
-		this.ctx.fillRect(0, 0, this.width, this.height);
-		this.ctx.restore();
-		this.drawText("中国传统色", frame.marginX, frame.eyebrowY, frame.eyebrowSize, "600", 0.7, { align: "left", tracking: frame.eyebrowSize * 0.22, color: ink });
-		this.drawText("TRADITIONAL COLOR", frame.rightX, frame.eyebrowY, frame.eyebrowSize, "600", 0.5, { align: "right", tracking: frame.eyebrowSize * 0.22, color: ink });
-		this.drawText(layout.name, frame.marginX, layout.nameY, layout.nameSize, "700", 1, { align: "left", color: ink });
-		this.drawMotifLines([layout.rule]);
-		this.drawText(layout.note, frame.marginX, layout.noteY, layout.noteSize, "500", 0.78, { align: "left", color: ink });
-		const labels = ["HEX", "RGB", "CMYK"];
-		const values = [layout.hexText, layout.rgbText, layout.cmykText];
-		layout.metaYs.forEach((y, i) => {
-			this.drawText(labels[i], frame.marginX, y, layout.metaSize, "600", 0.5, { align: "left", tracking: layout.metaSize * 0.2, color: ink });
-			this.drawText(values[i], frame.rightX, y, layout.metaSize, "500", 0.92, { align: "right", color: ink });
-		});
-		this.drawMotifCircles([...layout.swatches, layout.swatchRing]);
-		this.drawText("每日一色 · A COLOR A DAY", frame.marginX, frame.footerY, frame.footerSize, "500", 0.55, { align: "left", tracking: frame.footerSize * 0.14, color: ink });
-		this.drawText("色谱 · SPECTRUM", frame.marginX, layout.swatchCaptionY, layout.metaSize * 0.85, "600", 0.5, { align: "left", tracking: layout.metaSize * 0.2, color: ink });
-		this.drawText(`Nº ${String(layout.index + 1).padStart(3, "0")} / ${layout.total}`, frame.rightX, frame.footerY, frame.footerSize, "500", 0.55, { align: "right", tracking: frame.footerSize * 0.14, color: ink });
-	}
-
-	private drawCharacter() {
-		const layout = calculateCharacterLayout(this.config, this.now);
-		const { accent } = this.config.theme;
-		const frame = layout.frame;
-		this.eyebrow("汉字 · CHINESE CHARACTER", frame.marginX, frame.eyebrowY, frame.eyebrowSize, "left", 0.55);
-		this.eyebrow(layout.pinyin.toUpperCase(), frame.rightX, frame.eyebrowY, frame.eyebrowSize, "right", 0.5);
-		this.drawText(layout.char, this.width / 2, layout.charY, layout.charSize, "600");
-		this.ctx.save();
-		this.ctx.fillStyle = accent;
-		this.ctx.fillRect(this.width / 2 - layout.ruleWidth / 2, layout.ruleY, layout.ruleWidth, Math.max(3, this.width * 0.006));
-		this.ctx.restore();
-		this.drawText(layout.pinyin, this.width / 2, layout.pinyinY, layout.pinyinSize, "500", 0.55, { tracking: layout.pinyinSize * 0.3 });
-		this.drawText(layout.note, this.width / 2, layout.noteY, layout.noteSize, "500", 0.75);
-		this.footer("每日一字 · A CHARACTER A DAY", `Nº ${String(layout.index + 1).padStart(3, "0")} / ${layout.total}`, frame);
-	}
-
 	private drawGenerative() {
 		const layout = calculateGenerativeLayout(this.config, this.now);
 		const frame = layout.frame;
@@ -356,93 +287,6 @@ private drawMotifLines(lines: MotifLine[]) {
 		this.drawGenPaths(layout.paths);
 		this.drawMotifCircles(layout.dots);
 		this.footer(`${layout.algoName} · ${layout.algoEn}`, "程序生成 · PROCEDURAL", frame);
-	}
-
-	private drawMoon() {
-		const layout = calculateMoonLayout(this.config, this.now);
-		const frame = layout.frame;
-		this.eyebrow("月相 · MOON PHASE", frame.marginX, frame.eyebrowY, frame.eyebrowSize, "left", 0.55);
-		this.eyebrow(layout.waxing ? "盈 · WAXING" : "亏 · WANING", frame.rightX, frame.eyebrowY, frame.eyebrowSize, "right", 0.5);
-		this.drawMotifCircles(layout.stars);
-		this.drawMotifCircles([layout.darkCircle]);
-		this.drawGenPaths([{ d: layout.litPath, width: 0, filled: true, fill: this.config.theme.text, opacity: 0.95 }]);
-		this.drawMotifCircles([layout.ringCircle]);
-		this.drawText(layout.phaseName, frame.marginX, layout.nameY, layout.nameSize, "600", 1, { align: "left" });
-		this.drawText(layout.note, frame.marginX, layout.noteY, layout.noteSize, "500", 0.7, { align: "left" });
-		this.drawText(`照亮 ${layout.illumPct}%`, frame.rightX, layout.nameY, layout.metaSize + 6, "500", 0.9, { align: "right" });
-		this.drawText(`月龄 ${layout.age.toFixed(1)} 天`, frame.rightX, layout.noteY, layout.metaSize, "500", 0.55, { align: "right" });
-		this.footer("月相 · LUNAR PHASE", layout.waxing ? "渐盈 · WAXING" : "渐亏 · WANING", frame);
-	}
-
-private drawStroke() {
-		const layout = calculateStrokeLayout(this.config, this.now);
-		const { accent, text, bg } = this.config.theme;
-		const frame = layout.frame;
-		this.eyebrow("一笔 · ONE STROKE", frame.marginX, frame.eyebrowY, frame.eyebrowSize, "left", 0.55);
-		this.eyebrow(`${layout.familyName} · ${layout.familyEn}`, frame.rightX, frame.eyebrowY, frame.eyebrowSize, "right", 0.5);
-		this.drawGenPaths([
-			{ d: layout.haloPath, width: 0, filled: true, fill: text, opacity: 0.07 },
-			{ d: layout.mainPath, width: 0, filled: true, fill: text, opacity: 0.96 },
-			...layout.dryPaths.map((d) => ({ d, width: 0, filled: true, fill: bg, opacity: 0.5 })),
-		]);
-		this.ctx.save();
-		this.ctx.fillStyle = accent;
-		this.ctx.fillRect(layout.sealX, layout.sealY, layout.sealSize, layout.sealSize);
-		this.ctx.restore();
-		this.drawText("一", layout.sealX + layout.sealSize / 2, layout.sealY + layout.sealSize / 2, layout.sealSize * 0.58, "700", 1, { color: bg });
-		this.footer("每日一笔 · A STROKE A DAY", `SEED ${layout.seedLabel}`, frame);
-	}
-
-	private drawLewitt() {
-		const layout = calculateLewittLayout(this.config, this.now);
-		const frame = layout.frame;
-		this.eyebrow("指令 · WALL DRAWING", frame.marginX, frame.eyebrowY, frame.eyebrowSize, "left", 0.55);
-		this.eyebrow(`№ ${layout.number}`, frame.rightX, frame.eyebrowY, frame.eyebrowSize, "right", 0.5);
-		this.drawMotifLines(layout.lines);
-		this.drawMotifCircles(layout.circles);
-		this.drawGenPaths(layout.paths);
-		this.drawText(layout.instructionCn, frame.marginX, layout.instrCnY, layout.instrCnSize, "500", 0.9, { align: "left" });
-		this.drawText(layout.instructionEn, frame.marginX, layout.instrEnY, layout.instrEnSize, "600", 0.45, { align: "left", tracking: layout.instrEnSize * 0.16 });
-		this.footer("观念即作品", "AFTER SOL LEWITT", frame);
-	}
-
-	private drawAlbers() {
-		const layout = calculateAlbersLayout(this.config, this.now);
-		const { set, inkLeft, inkRight } = layout;
-		const frame = layout.frame;
-		this.drawGenPaths(layout.rects);
-		this.drawText("色彩关系", frame.marginX, frame.eyebrowY, frame.eyebrowSize, "600", 0.7, { align: "left", tracking: frame.eyebrowSize * 0.22, color: inkLeft });
-		this.drawText("COLOR IS RELATIVE", frame.rightX, frame.eyebrowY, frame.eyebrowSize, "600", 0.55, { align: "right", tracking: frame.eyebrowSize * 0.22, color: inkRight });
-		this.drawText(set.name, frame.marginX, layout.nameY, layout.nameSize, "600", 1, { align: "left", color: inkLeft });
-		this.drawText(set.line, frame.marginX, layout.lineY, layout.lineSize, "500", 0.75, { align: "left", color: inkLeft });
-		this.drawText(`№ ${String(layout.index + 1).padStart(2, "0")} / ${layout.total}`, frame.rightX, layout.nameY, layout.lineSize, "500", 0.6, { align: "right", color: inkRight });
-		this.drawText("色彩即关系", frame.marginX, frame.footerY, frame.footerSize, "500", 0.55, { align: "left", tracking: frame.footerSize * 0.14, color: inkLeft });
-		this.drawText("AFTER JOSEF ALBERS", frame.rightX, frame.footerY, frame.footerSize, "500", 0.55, { align: "right", tracking: frame.footerSize * 0.14, color: inkRight });
-	}
-
-	private drawSolar() {
-		const layout = calculateSolarLayout(this.config, this.now);
-		const { accent } = this.config.theme;
-		const frame = layout.frame;
-		const metaSize = Math.min(this.width * 0.031, this.height * 0.02);
-		this.eyebrow("太阳弧 · SOLAR ARC", frame.marginX, frame.eyebrowY, frame.eyebrowSize, "left", 0.55);
-		this.eyebrow("北纬 38.04°", frame.rightX, frame.eyebrowY, frame.eyebrowSize, "right", 0.5);
-		this.drawGenPaths([
-			{ d: layout.belowPath, width: Math.max(1.4, this.width * 0.002), opacity: 0.22 },
-			{ d: layout.arcPath, width: Math.max(1.8, this.width * 0.0028), opacity: 0.95 },
-		]);
-		this.hairline(frame.marginX - this.width * 0.02, frame.rightX + this.width * 0.02, layout.horizonY, accent, 0.55, 1.5);
-		this.dot(layout.sunX, layout.sunY, layout.sunR, accent, layout.sunVisible ? 1 : 0.35);
-		this.ctx.save();
-		this.ctx.globalAlpha = layout.sunVisible ? 0.5 : 0.2;
-		this.ring(layout.sunX, layout.sunY, layout.sunR * 1.9, accent, 1.5);
-		this.ctx.restore();
-		this.drawText("日出", layout.riseX, layout.horizonY + metaSize * 1.5, metaSize * 0.92, "500", 0.5);
-		this.drawText("日落", layout.setX, layout.horizonY + metaSize * 1.5, metaSize * 0.92, "500", 0.5);
-		this.drawText(layout.dayLengthText, frame.marginX, this.height * 0.715, Math.min(this.width * 0.052, this.height * 0.033), "600", 1, { align: "left" });
-		this.drawText(layout.noonAltText, frame.marginX, this.height * 0.762, metaSize + 4, "500", 0.6, { align: "left" });
-		this.drawText(layout.declinationText, frame.rightX, this.height * 0.762, metaSize + 4, "500", 0.6, { align: "right" });
-		this.footer("太阳轨迹 · SUN PATH", "每日更新 · DAILY ARC", frame);
 	}
 
 	private drawMinimal() {

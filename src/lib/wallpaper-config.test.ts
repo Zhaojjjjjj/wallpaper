@@ -376,32 +376,9 @@ test("device presets use calibrated dimensions and preserve duplicate-resolution
 	assert.equal(resolveDevicePresetId(1000, 1000), "custom");
 });
 
-import { calculateColorLayout, calculateCharacterLayout, calculateGenerativeLayout, calculateMoonLayout } from "./wallpaper-layout";
-import { TRADITIONAL_COLORS } from "./traditional-colors";
-import { DAILY_CHARACTERS } from "./daily-characters";
+import { calculateGenerativeLayout } from "./wallpaper-layout";
 
 const sampleTheme = { bg: "#000000", accent: "#FFFFFF", text: "#FFFFFF" };
-
-test("daily color walks the traditional palette one per day", () => {
-	assert.equal(TRADITIONAL_COLORS.length, 100);
-	assert.equal(new Set(TRADITIONAL_COLORS.map((c) => c.name)).size, 100);
-	const day1 = calculateColorLayout({ type: "color", width: 1179, height: 2556, theme: sampleTheme }, new Date(2026, 10, 9, 12));
-	const day2 = calculateColorLayout({ type: "color", width: 1179, height: 2556, theme: sampleTheme }, new Date(2026, 10, 10, 12));
-	assert.notEqual(day1.name, day2.name);
-	assert.match(day1.hexText, /^#[0-9A-F]{6}$/);
-	assert.equal(day1.swatches.length, 5);
-	// Ink flips with field luminance so text always stays readable.
-	const light = calculateColorLayout({ type: "color", width: 1179, height: 2556, theme: sampleTheme }, new Date(2026, 10, 9, 12));
-	assert.ok(light.ink === "#1C1A17" || light.ink === "#F7F3EA");
-});
-
-test("daily character cycles a single-character set", () => {
-	assert.equal(DAILY_CHARACTERS.length, 182);
-	assert.ok(DAILY_CHARACTERS.every((entry) => entry.char.length === 1 && entry.pinyin.length > 0 && entry.note.length > 0));
-	const layout = calculateCharacterLayout({ type: "character", width: 1179, height: 2556, theme: sampleTheme }, new Date(2026, 10, 9, 12));
-	assert.equal(layout.char.length, 1);
-	assert.ok(layout.index >= 0 && layout.index < 182);
-});
 
 test("generative study is deterministic per day and rotates algorithms", () => {
 	const make = (date: Date) => calculateGenerativeLayout({ type: "generative", width: 1179, height: 2556, theme: sampleTheme }, date);
@@ -414,62 +391,3 @@ test("generative study is deterministic per day and rotates algorithms", () => {
 	for (const path of a.paths) assert.ok(!path.d.includes("NaN"), path.d);
 });
 
-test("moon layout follows the real lunar cycle", () => {
-	const make = (date: Date) => calculateMoonLayout({ type: "moon", width: 1179, height: 2556, theme: sampleTheme }, date);
-	const newMoon = make(new Date(2026, 10, 9, 12));
-	assert.ok(newMoon.illumPct <= 5, `new moon illum ${newMoon.illumPct}`);
-	const fullMoon = make(new Date(2026, 10, 24, 12));
-	assert.equal(fullMoon.phaseName, "望月");
-	assert.ok(fullMoon.illumPct >= 95, `full moon illum ${fullMoon.illumPct}`);
-	const firstQuarter = make(new Date(2026, 10, 17, 12));
-	assert.equal(firstQuarter.phaseName, "上弦月");
-	assert.ok(firstQuarter.illumPct >= 40 && firstQuarter.illumPct <= 60);
-	assert.ok(firstQuarter.waxing);
-	assert.ok(fullMoon.litPath.includes(" A "));
-});
-
-import { calculateStrokeLayout, calculateLewittLayout, calculateAlbersLayout, calculateSolarLayout, ALBERS_SETS } from "./wallpaper-layout";
-
-test("one stroke a day: deterministic, four families rotate, paths finite", () => {
-	const make = (date: Date) => calculateStrokeLayout({ type: "stroke", width: 1179, height: 2556, theme: sampleTheme }, date);
-	const a = make(new Date(2026, 10, 9, 12));
-	const b = make(new Date(2026, 10, 9, 20));
-	assert.equal(a.mainPath, b.mainPath);
-	assert.ok(a.mainPath.length > 200 && !a.mainPath.includes("NaN"));
-	const families = new Set([0, 1, 2, 3].map((o) => make(new Date(2026, 10, 9 + o, 12)).familyEn));
-	assert.equal(families.size, 4);
-});
-
-test("lewitt instructions rotate and produce bounded geometry", () => {
-	const make = (date: Date) => calculateLewittLayout({ type: "lewitt", width: 1179, height: 2556, theme: sampleTheme }, date);
-	const sets = new Set([0, 1, 2, 3].map((o) => make(new Date(2026, 10, 9 + o, 12)).instructionEn));
-	assert.equal(sets.size, 4);
-	for (let o = 0; o < 4; o += 1) {
-		const layout = make(new Date(2026, 10, 9 + o, 12));
-		const total = layout.lines.length + layout.circles.length + layout.paths.length;
-		assert.ok(total > 10 && total < 400, `set ${o}: ${total} elements`);
-		for (const path of layout.paths) assert.ok(!path.d.includes("NaN"));
-	}
-});
-
-test("albers studies cycle curated relationship sets", () => {
-	assert.equal(ALBERS_SETS.length, 16);
-	assert.equal(new Set(ALBERS_SETS.map((s) => s.grounds.join("/"))).size, 16);
-	const make = (date: Date) => calculateAlbersLayout({ type: "albers", width: 1179, height: 2556, theme: sampleTheme }, date);
-	const split = make(new Date(2026, 10, 17, 12)); // day index 320 -> set 0 (split)
-	assert.equal(split.set.mode, "split");
-	assert.equal(split.rects.length, 4);
-	assert.notEqual(split.inkLeft, undefined);
-});
-
-test("solar arc is longer and higher in summer than winter", () => {
-	const make = (date: Date) => calculateSolarLayout({ type: "solar", width: 1179, height: 2556, theme: sampleTheme }, date);
-	const summer = make(new Date(2026, 5, 21, 12));
-	const winter = make(new Date(2026, 11, 21, 12));
-	assert.ok(summer.dayLengthText > winter.dayLengthText || summer.setX - summer.riseX > winter.setX - winter.riseX);
-	assert.ok(summer.setX - summer.riseX > winter.setX - winter.riseX, "summer arc wider");
-	assert.match(summer.dayLengthText, /白昼 1[45] 小时/);
-	assert.match(winter.dayLengthText, /白昼 9 小时/);
-	const today = make(new Date(2026, 10, 9, 12));
-	assert.ok(today.arcPath.includes("L") && !today.arcPath.includes("NaN"));
-});
