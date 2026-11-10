@@ -634,7 +634,6 @@ export interface LyricLayout {
 	excerpt: LyricExcerpt;
 	album: AlbumInfo;
 	cover: { x: number; y: number; size: number; url: string | null };
-	disc: { cx: number; cy: number; r: number } | null;
 	heroSize: number;
 	firstLineY: number;
 	lineGap: number;
@@ -658,15 +657,11 @@ export function calculateLyricLayout(config: WallpaperConfig, now: Date): LyricL
 	const cap = Math.min(width * 0.084, height * 0.05);
 	const heroSize = Math.min(cap, frame.contentWidth / (longest * 1.02));
 	const lineGap = heroSize * 1.62;
-	// The day's album cover sits up top as a record sleeve: a vinyl disc
-	// crescent peeks out on its right, the passage block centres underneath.
+	// The day's album cover sits up top; the passage block centres underneath.
 	const coverSize = Math.min(frame.contentWidth * 0.96, height * 0.405);
 	const coverX = frame.marginX + (frame.contentWidth - coverSize) / 2;
 	const coverY = height * 0.108;
 	const cover = { x: coverX, y: coverY, size: coverSize, url: album.cover };
-	const disc = album.cover
-		? { cx: coverX + coverSize - coverSize * 0.465 * 0.55, cy: coverY + coverSize / 2, r: coverSize * 0.465 }
-		: null;
 	const creditSize = frame.footerSize * 1.4;
 	const albumSize = frame.footerSize * 1.12;
 	const span = heroSize * 1.2 + (excerpt.lines.length - 1) * lineGap + heroSize * 1.5 + creditSize * 1.55 + albumSize * 0.5;
@@ -683,5 +678,5 @@ export function calculateLyricLayout(config: WallpaperConfig, now: Date): LyricL
 	};
 	const creditY = firstLineY + (excerpt.lines.length - 1) * lineGap + heroSize * 1.5;
 	const albumY = creditY + creditSize * 1.55;
-	return { frame, excerpt, album, cover, disc, heroSize, firstLineY, lineGap, dash, creditY, albumY };
+	return { frame, excerpt, album, cover, heroSize, firstLineY, lineGap, dash, creditY, albumY };
 }

@@ -445,6 +445,5 @@ test("lyric layout carries the day's album cover and credits the album", () => {
 	assert.equal(layout.excerpt.song, "晴天");
 	assert.equal(layout.album.album, "叶惠美");
 	assert.ok(layout.cover.url?.includes("600x600bb"));
-	assert.ok(layout.disc && layout.disc.r > 0);
 	assert.ok(layout.albumY > layout.creditY);
 });

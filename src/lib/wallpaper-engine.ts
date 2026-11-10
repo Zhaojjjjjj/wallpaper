@@ -289,36 +289,13 @@ private drawMotifLines(lines: MotifLine[]) {
 		const layout = calculateLyricLayout(this.config, this.now);
 		const frame = layout.frame;
 		const { excerpt } = layout;
-		const { accent } = this.config.theme;
-		if (layout.cover.url && layout.disc) {
+		if (layout.cover.url) {
 			const { x, y, size } = layout.cover;
-			const d = layout.disc;
 			const ctx = this.ctx;
 			ctx.save();
 			ctx.fillStyle = "#000000";
 			ctx.globalAlpha = 0.16;
 			ctx.fillRect(x, y + size * 0.018, size, size);
-			ctx.globalAlpha = 1;
-			ctx.beginPath();
-			ctx.arc(d.cx, d.cy, d.r, 0, Math.PI * 2);
-			ctx.fillStyle = "#17171c";
-			ctx.fill();
-			ctx.beginPath();
-			ctx.arc(d.cx, d.cy, d.r * 0.8, 0, Math.PI * 2);
-			ctx.strokeStyle = accent;
-			ctx.globalAlpha = 0.9;
-			ctx.lineWidth = Math.max(1.5, size * 0.004);
-			ctx.stroke();
-			ctx.beginPath();
-			ctx.arc(d.cx, d.cy, d.r * 0.62, 0, Math.PI * 2);
-			ctx.strokeStyle = "#ffffff";
-			ctx.globalAlpha = 0.16;
-			ctx.lineWidth = Math.max(1, size * 0.003);
-			ctx.stroke();
-			ctx.beginPath();
-			ctx.arc(d.cx, d.cy, d.r * 0.45, 0, Math.PI * 2);
-			ctx.globalAlpha = 0.1;
-			ctx.stroke();
 			ctx.globalAlpha = 1;
 			if (this.coverImage && this.coverImage.naturalWidth > 0) {
 				const img = this.coverImage;

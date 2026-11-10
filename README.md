@@ -15,7 +15,7 @@ re-download it daily and your wallpaper always shows today's progress.
 | `month` | A poster-style calendar of the current month: tracked English eyebrow, accent rule, real Monday-first grid, today as a filled disc, progress hairline |
 | `minimal` | Just the year progress as a giant light-weight percentage, with the days remaining |
 | `generative` | 每日生成： a procedural study seeded by the day — four algorithms rotate (quarter arcs, wobbly contours, a dot interference field, quarter discs); the artwork changes completely every day and shows nothing but a seed code |
-| `lyric` | 歌词 · 陈奕迅 / 赵雷 / 周杰伦的歌里每天随机一段，全周期不重复，配所属专辑封面（黑胶唱片造型）与专辑年份 |
+| `lyric` | 歌词 · 陈奕迅 / 赵雷 / 周杰伦的歌里每天随机一段，全周期不重复，配所属专辑封面与专辑年份 |
 
 ## Development
 
