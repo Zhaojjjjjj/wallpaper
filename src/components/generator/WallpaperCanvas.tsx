@@ -2,6 +2,9 @@ import React, { useEffect, useRef } from "react";
 import { WallpaperConfig } from "@/lib/types";
 import { WallpaperEngine } from "@/lib/wallpaper-engine";
 import { millisecondsUntilWallpaperUpdate } from "@/lib/wallpaper-time";
+import { getDailyLyric } from "@/lib/lyrics";
+import { ALBUM_BY_SONG } from "@/lib/albums";
+import { toWallClockDate } from "@/lib/wallpaper-progress";
 
 interface WallpaperCanvasProps {
 	config: WallpaperConfig;
@@ -26,7 +29,24 @@ export const WallpaperCanvas: React.FC<WallpaperCanvasProps> = ({ config, classN
 
 		const renderConfig: WallpaperConfig =
 			scale === 1 ? config : { ...config, width: renderWidth, height: renderHeight };
-		const render = () => new WallpaperEngine(ctx, renderConfig).render();
+		let coverImage: HTMLImageElement | null = null;
+		const render = () => {
+			const engine = new WallpaperEngine(ctx, renderConfig);
+			engine.coverImage = coverImage;
+			engine.render();
+		};
+		if (config.type === "lyric") {
+			const wallNow = toWallClockDate(new Date(), config.timeZone);
+			const url = ALBUM_BY_SONG[getDailyLyric(wallNow).song]?.cover;
+			if (url) {
+				const img = new Image();
+				img.onload = () => {
+					coverImage = img;
+					render();
+				};
+				img.src = url;
+			}
+		}
 		let timer: number | undefined;
 
 		const scheduleNextRender = () => {

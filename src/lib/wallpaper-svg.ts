@@ -194,10 +194,19 @@ function lyricParts(config: WallpaperConfig, now: Date): Parts {
 		layers.push({ text: line, x: frame.marginX, y: layout.firstLineY + i * layout.lineGap, size: layout.heroSize, weight: 500, opacity: 1, align: "left" });
 	});
 	layers.push({ text: `《${excerpt.song}》`, x: frame.marginX, y: layout.creditY, size: frame.footerSize * 1.4, weight: 500, opacity: 0.72, align: "left" });
-	const { text } = config.theme;
+	if (layout.album.album) {
+		layers.push({ text: `${layout.album.album} · ${layout.album.year}`, x: frame.marginX, y: layout.albumY, size: frame.footerSize * 1.12, weight: 400, opacity: 0.55, align: "left" });
+	}
 	let shapes = "";
-	for (const path of layout.portrait) {
-		shapes += pathElement(path.d, null, 0.92, path.accent ? accent : text, path.width);
+	if (layout.cover.url && layout.disc) {
+		const { x, y, size } = layout.cover;
+		const d = layout.disc;
+		shapes += `<rect x="${x}" y="${y + size * 0.018}" width="${size}" height="${size}" fill="#000000" opacity="0.16"/>`;
+		shapes += `<circle cx="${d.cx}" cy="${d.cy}" r="${d.r}" fill="#17171c"/>`;
+		shapes += `<circle cx="${d.cx}" cy="${d.cy}" r="${d.r * 0.8}" fill="none" stroke="${accent}" stroke-width="${Math.max(1.5, size * 0.004)}" opacity="0.9"/>`;
+		shapes += `<circle cx="${d.cx}" cy="${d.cy}" r="${d.r * 0.62}" fill="none" stroke="#ffffff" stroke-width="${Math.max(1, size * 0.003)}" opacity="0.16"/>`;
+		shapes += `<circle cx="${d.cx}" cy="${d.cy}" r="${d.r * 0.45}" fill="none" stroke="#ffffff" stroke-width="${Math.max(1, size * 0.003)}" opacity="0.1"/>`;
+		shapes += `<image href="${layout.cover.url}" x="${x}" y="${y}" width="${size}" height="${size}" preserveAspectRatio="xMidYMid slice"/>`;
 	}
 	const dash = layout.dash;
 	shapes += lineElement(dash.x1, dash.y1, dash.x2, dash.y2, accent, 1, dash.width ?? 3, true);

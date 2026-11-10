@@ -3,6 +3,7 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { findWallpaperQueryIssues, parseWallpaperConfig } from "@/lib/wallpaper-config";
 import { getWallpaperTextLayers, renderWallpaperSvg, svgToDataUrl } from "@/lib/wallpaper-svg";
+import { calculateLyricLayout } from "@/lib/wallpaper-layout";
 import { toWallClockDate } from "@/lib/wallpaper-progress";
 import { getWallpaperCacheSeconds } from "@/lib/wallpaper-time";
 
@@ -26,6 +27,7 @@ export async function GET(request: Request) {
 	const svg = renderWallpaperSvg(config, now, false);
 	const imageSource = svgToDataUrl(svg);
 	const textLayers = getWallpaperTextLayers(config, now);
+	const lyricLayout = config.type === "lyric" ? calculateLyricLayout(config, now) : null;
 	const filename = `lifegrid-${config.type}-${config.width}x${config.height}.png`;
 	const cacheSeconds = getWallpaperCacheSeconds(instant, config.timeZone);
 	const fontData = await notoSansSc;
@@ -36,6 +38,16 @@ export async function GET(request: Request) {
 				{/* ImageResponse requires a renderable image element; next/image is not available in this server renderer. */}
 				{/* eslint-disable-next-line @next/next/no-img-element */}
 				<img src={imageSource} width={config.width} height={config.height} alt="" />
+				{lyricLayout?.cover.url ? (
+					// eslint-disable-next-line @next/next/no-img-element
+					<img
+						src={lyricLayout.cover.url}
+						width={lyricLayout.cover.size}
+						height={lyricLayout.cover.size}
+						alt=""
+						style={{ position: "absolute", left: lyricLayout.cover.x, top: lyricLayout.cover.y, objectFit: "cover" }}
+					/>
+				) : null}
 				{textLayers.map((layer, index) => (
 					<div
 						key={`${index}-${layer.text}`}

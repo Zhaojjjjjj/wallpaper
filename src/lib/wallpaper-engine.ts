@@ -23,6 +23,8 @@ const WEEKDAY_LETTERS = ["一", "二", "三", "四", "五", "六", "日"];
 export const WALLPAPER_FONT_STACK = '"Inter", "Noto Sans SC", sans-serif';
 
 export class WallpaperEngine {
+	/** Preloaded cover bitmap for the lyric style, set by the canvas host. */
+	coverImage: HTMLImageElement | null = null;
 	private ctx: CanvasRenderingContext2D;
 	private config: WallpaperConfig;
 	private now: Date;
@@ -287,12 +289,59 @@ private drawMotifLines(lines: MotifLine[]) {
 		const layout = calculateLyricLayout(this.config, this.now);
 		const frame = layout.frame;
 		const { excerpt } = layout;
-		this.drawGenPaths(layout.portrait);
+		const { accent } = this.config.theme;
+		if (layout.cover.url && layout.disc) {
+			const { x, y, size } = layout.cover;
+			const d = layout.disc;
+			const ctx = this.ctx;
+			ctx.save();
+			ctx.fillStyle = "#000000";
+			ctx.globalAlpha = 0.16;
+			ctx.fillRect(x, y + size * 0.018, size, size);
+			ctx.globalAlpha = 1;
+			ctx.beginPath();
+			ctx.arc(d.cx, d.cy, d.r, 0, Math.PI * 2);
+			ctx.fillStyle = "#17171c";
+			ctx.fill();
+			ctx.beginPath();
+			ctx.arc(d.cx, d.cy, d.r * 0.8, 0, Math.PI * 2);
+			ctx.strokeStyle = accent;
+			ctx.globalAlpha = 0.9;
+			ctx.lineWidth = Math.max(1.5, size * 0.004);
+			ctx.stroke();
+			ctx.beginPath();
+			ctx.arc(d.cx, d.cy, d.r * 0.62, 0, Math.PI * 2);
+			ctx.strokeStyle = "#ffffff";
+			ctx.globalAlpha = 0.16;
+			ctx.lineWidth = Math.max(1, size * 0.003);
+			ctx.stroke();
+			ctx.beginPath();
+			ctx.arc(d.cx, d.cy, d.r * 0.45, 0, Math.PI * 2);
+			ctx.globalAlpha = 0.1;
+			ctx.stroke();
+			ctx.globalAlpha = 1;
+			if (this.coverImage && this.coverImage.naturalWidth > 0) {
+				const img = this.coverImage;
+				const scale = Math.max(size / img.naturalWidth, size / img.naturalHeight);
+				const sw = size / scale;
+				const sh = size / scale;
+				ctx.drawImage(img, (img.naturalWidth - sw) / 2, (img.naturalHeight - sh) / 2, sw, sh, x, y, size, size);
+			} else {
+				ctx.fillStyle = this.config.theme.text;
+				ctx.globalAlpha = 0.07;
+				ctx.fillRect(x, y, size, size);
+				ctx.globalAlpha = 1;
+			}
+			ctx.restore();
+		}
 		this.drawMotifLines([layout.dash]);
 		excerpt.lines.forEach((line, i) => {
 			this.drawText(line, frame.marginX, layout.firstLineY + i * layout.lineGap, layout.heroSize, "500", 1, { align: "left" });
 		});
 		this.drawText(`《${excerpt.song}》`, frame.marginX, layout.creditY, frame.footerSize * 1.4, "500", 0.72, { align: "left" });
+		if (layout.album.album) {
+			this.drawText(`${layout.album.album} · ${layout.album.year}`, frame.marginX, layout.albumY, frame.footerSize * 1.12, "400", 0.55, { align: "left" });
+		}
 	}
 
 	private drawGenerative() {

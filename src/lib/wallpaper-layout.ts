@@ -2,7 +2,7 @@ import { WallpaperConfig } from "./types";
 import { getDailyQuote } from "./calendar-quotes";
 import { getDayOfYearInfo, getMonthInfo } from "./wallpaper-progress";
 import { getDailyLyric, type LyricExcerpt } from "./lyrics";
-import { getPortrait, transformPath } from "./portraits";
+import { ALBUM_BY_SONG, type AlbumInfo } from "./albums";
 
 /**
  * Poster system shared by the Canvas engine, the SVG renderer and the PNG
@@ -632,12 +632,15 @@ export function calculateGenerativeLayout(config: WallpaperConfig, now: Date): G
 export interface LyricLayout {
 	frame: PosterFrame;
 	excerpt: LyricExcerpt;
-	portrait: GenPath[];
+	album: AlbumInfo;
+	cover: { x: number; y: number; size: number; url: string | null };
+	disc: { cx: number; cy: number; r: number } | null;
 	heroSize: number;
 	firstLineY: number;
 	lineGap: number;
 	dash: MotifLine;
 	creditY: number;
+	albumY: number;
 }
 
 function visualLength(line: string): number {
@@ -650,26 +653,25 @@ export function calculateLyricLayout(config: WallpaperConfig, now: Date): LyricL
 	const { width, height } = config;
 	const frame = posterFrame(width, height);
 	const excerpt = getDailyLyric(now);
+	const album = ALBUM_BY_SONG[excerpt.song] ?? { album: "", year: 0, cover: null };
 	const longest = Math.max(...excerpt.lines.map(visualLength));
 	const cap = Math.min(width * 0.084, height * 0.05);
 	const heroSize = Math.min(cap, frame.contentWidth / (longest * 1.02));
 	const lineGap = heroSize * 1.62;
-	// Portrait on top, then the dash + passage + credit centred as one block
-	// in the space that remains underneath it.
-	const portraitSize = Math.min(frame.contentWidth * 0.64, height * 0.285);
-	const portraitX = frame.marginX;
-	const portraitY = height * 0.125;
-	const scale = portraitSize / 240;
-	const strokeWidth = Math.max(1.6, portraitSize * 0.0142);
-	const epochDays = Math.floor(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()) / 86400000);
-	const source = getPortrait(excerpt.artist, epochDays);
-	const portrait: GenPath[] = [
-		...source.lines.map((d) => ({ d: transformPath(d, scale, portraitX, portraitY), width: strokeWidth })),
-		...source.accents.map((d) => ({ d: transformPath(d, scale, portraitX, portraitY), width: strokeWidth, accent: true })),
-	];
+	// The day's album cover sits up top as a record sleeve: a vinyl disc
+	// crescent peeks out on its right, the passage block centres underneath.
+	const coverSize = Math.min(frame.contentWidth * 0.96, height * 0.405);
+	const coverX = frame.marginX + (frame.contentWidth - coverSize) / 2;
+	const coverY = height * 0.108;
+	const cover = { x: coverX, y: coverY, size: coverSize, url: album.cover };
+	const disc = album.cover
+		? { cx: coverX + coverSize - coverSize * 0.465 * 0.55, cy: coverY + coverSize / 2, r: coverSize * 0.465 }
+		: null;
 	const creditSize = frame.footerSize * 1.4;
-	const span = heroSize * 1.2 + (excerpt.lines.length - 1) * lineGap + heroSize * 1.45 + creditSize * 0.5;
-	const blockCenter = (portraitY + portraitSize + height * 0.955) / 2;
+	const albumSize = frame.footerSize * 1.12;
+	const span = heroSize * 1.2 + (excerpt.lines.length - 1) * lineGap + heroSize * 1.5 + creditSize * 1.55 + albumSize * 0.5;
+	const anchorTop = album.cover ? coverY + coverSize : height * 0.3;
+	const blockCenter = (anchorTop + height * 0.955) / 2;
 	const firstLineY = blockCenter - span / 2 + heroSize * 1.2;
 	const dash: MotifLine = {
 		x1: frame.marginX,
@@ -679,6 +681,7 @@ export function calculateLyricLayout(config: WallpaperConfig, now: Date): LyricL
 		accent: true,
 		width: Math.max(2, heroSize * 0.075),
 	};
-	const creditY = firstLineY + (excerpt.lines.length - 1) * lineGap + heroSize * 1.45;
-	return { frame, excerpt, portrait, heroSize, firstLineY, lineGap, dash, creditY };
+	const creditY = firstLineY + (excerpt.lines.length - 1) * lineGap + heroSize * 1.5;
+	const albumY = creditY + creditSize * 1.55;
+	return { frame, excerpt, album, cover, disc, heroSize, firstLineY, lineGap, dash, creditY, albumY };
 }
