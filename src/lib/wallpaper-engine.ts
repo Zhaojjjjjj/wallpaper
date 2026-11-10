@@ -281,12 +281,8 @@ private drawMotifLines(lines: MotifLine[]) {
 
 	private drawGenerative() {
 		const layout = calculateGenerativeLayout(this.config, this.now);
-		const frame = layout.frame;
-		this.eyebrow("生成 · GENERATIVE STUDY", frame.marginX, frame.eyebrowY, frame.eyebrowSize, "left", 0.55);
-		this.eyebrow(`SEED ${layout.seedLabel}`, frame.rightX, frame.eyebrowY, frame.eyebrowSize, "right", 0.5);
 		this.drawGenPaths(layout.paths);
 		this.drawMotifCircles(layout.dots);
-		this.footer(`${layout.algoName} · ${layout.algoEn}`, "程序生成 · PROCEDURAL", frame);
 	}
 
 	private drawMinimal() {

@@ -170,11 +170,8 @@ function generativeParts(config: WallpaperConfig, now: Date): Parts {
 	const layout = calculateGenerativeLayout(config, now);
 	const { accent, text, bg } = config.theme;
 	const frame = layout.frame;
-	const layers: WallpaperTextLayer[] = [
-		eyebrowLayer("生成 · GENERATIVE STUDY", frame.marginX, frame.eyebrowY, frame.eyebrowSize, "left", 0.55),
-		eyebrowLayer(`SEED ${layout.seedLabel}`, frame.rightX, frame.eyebrowY, frame.eyebrowSize, "right", 0.5),
-		...footerLayers(`${layout.algoName} · ${layout.algoEn}`, "程序生成 · PROCEDURAL", frame),
-	];
+	// No text at all: the study stands on its own, without eyebrow or footer.
+	const layers: WallpaperTextLayer[] = [];
 	let shapes = "";
 	for (const path of layout.paths) {
 		shapes += path.filled
