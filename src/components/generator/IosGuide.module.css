@@ -1,0 +1,74 @@
+.container {
+	background: var(--bg-card);
+	border: 1px solid var(--border);
+	border-radius: var(--radius-lg);
+	padding: var(--spacing-lg);
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing-sm);
+	margin-top: var(--spacing-xl);
+}
+
+.title {
+	font-size: 1.1rem;
+	color: var(--text-main);
+	font-family: inherit;
+}
+
+.desc {
+	font-size: 0.9rem;
+	color: var(--text-muted);
+	line-height: 1.5;
+}
+
+.subhead {
+	margin-top: var(--spacing-md);
+	font-size: 0.95rem;
+	font-weight: 600;
+	color: var(--text-main);
+}
+
+.steps {
+	list-style: none;
+	counter-reset: step;
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing-sm);
+	margin: 0;
+	padding: 0;
+}
+
+.step {
+	counter-increment: step;
+	display: flex;
+	gap: var(--spacing-sm);
+	align-items: flex-start;
+}
+
+.step::before {
+	content: counter(step);
+	flex-shrink: 0;
+	width: 22px;
+	height: 22px;
+	border-radius: 999px;
+	background: var(--primary);
+	color: #fff;
+	font-size: 0.78rem;
+	font-weight: 600;
+	line-height: 22px;
+	text-align: center;
+	margin-top: 1px;
+}
+
+.stepText {
+	font-size: 0.9rem;
+	line-height: 1.55;
+	color: var(--text-main);
+}
+
+.note {
+	margin-top: var(--spacing-md);
+	font-size: 0.85rem;
+	line-height: 1.55;
+	color: var(--text-muted);
+}

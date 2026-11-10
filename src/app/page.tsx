@@ -5,6 +5,7 @@ import { PreviewCanvas } from "@/components/generator/PreviewCanvas";
 import { StyleSelector } from "@/components/generator/StyleSelector";
 import { ConfigPanel } from "@/components/generator/ConfigPanel";
 import { UrlGenerator } from "@/components/generator/UrlGenerator";
+import { IosGuide } from "@/components/generator/IosGuide";
 import { Header } from "@/components/layout/Header";
 import { WallpaperConfig, DEFAULT_CONFIG } from "@/lib/types";
 import { selectWallpaperType } from "@/lib/wallpaper-config";
@@ -42,6 +43,7 @@ export default function Home() {
 						<section className={styles.section}>
 							<ConfigPanel config={config} onChange={setConfig} />
 							<UrlGenerator config={config} />
+							<IosGuide />
 						</section>
 						</div>
 					</div>
