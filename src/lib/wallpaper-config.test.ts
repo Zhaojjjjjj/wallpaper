@@ -391,3 +391,33 @@ test("generative study is deterministic per day and rotates algorithms", () => {
 	for (const path of a.paths) assert.ok(!path.d.includes("NaN"), path.d);
 });
 
+
+import { getDailyLyric, LYRICS } from "./lyrics";
+
+test("daily lyric is deterministic within a day and changes the next day", () => {
+	const day = new Date(2026, 10, 10, 8, 0, 0);
+	const sameDay = new Date(2026, 10, 10, 23, 59, 0);
+	const nextDay = new Date(2026, 10, 11, 0, 1, 0);
+	assert.equal(getDailyLyric(day), getDailyLyric(sameDay));
+	assert.notEqual(getDailyLyric(day), getDailyLyric(nextDay));
+});
+
+test("lyric cycle covers every passage exactly once, artists are the three named", () => {
+	assert.deepEqual([...new Set(LYRICS.map((l) => l.artist))].sort(), ["周杰伦", "赵雷", "陈奕迅"].sort());
+	const seen = new Set<string>();
+	// Align the window to a shuffle-cycle boundary (epochDay % count === 0).
+	const start = new Date(2026, 0, 1);
+	while (Math.floor(Date.UTC(start.getFullYear(), start.getMonth(), start.getDate()) / 86400000) % LYRICS.length !== 0) {
+		start.setDate(start.getDate() + 1);
+	}
+	for (let i = 0; i < LYRICS.length; i += 1) {
+		const d = new Date(start.getFullYear(), start.getMonth(), start.getDate() + i);
+		const lyric = getDailyLyric(d);
+		seen.add(`${lyric.artist}|${lyric.song}|${lyric.lines.join("/")}`);
+	}
+	assert.equal(seen.size, LYRICS.length);
+	// The day after a full cycle must not repeat the cycle's last passage.
+	const lastDay = new Date(start.getFullYear(), start.getMonth(), start.getDate() + LYRICS.length - 1);
+	const after = new Date(start.getFullYear(), start.getMonth(), start.getDate() + LYRICS.length);
+	assert.notEqual(getDailyLyric(after), getDailyLyric(lastDay));
+});

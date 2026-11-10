@@ -1,6 +1,7 @@
 import { WallpaperConfig } from "./types";
 import { getDailyQuote } from "./calendar-quotes";
 import { getDayOfYearInfo, getMonthInfo } from "./wallpaper-progress";
+import { getDailyLyric, type LyricExcerpt } from "./lyrics";
 
 /**
  * Poster system shared by the Canvas engine, the SVG renderer and the PNG
@@ -620,4 +621,47 @@ export function calculateGenerativeLayout(config: WallpaperConfig, now: Date): G
 		paths,
 		dots,
 	};
+}
+
+// ---------------------------------------------------------------------------
+// lyric — 每日歌词：陈奕迅 / 赵雷 / 周杰伦的歌里，每天随机一段，全周期不重复。
+// Poster frame: eyebrow, an accent dash, the passage set large, the song
+// credited underneath, artist in the footer.
+
+export interface LyricLayout {
+	frame: PosterFrame;
+	excerpt: LyricExcerpt;
+	heroSize: number;
+	firstLineY: number;
+	lineGap: number;
+	dash: MotifLine;
+	creditY: number;
+}
+
+function visualLength(line: string): number {
+	let total = 0;
+	for (const ch of line) total += (ch.codePointAt(0) ?? 0) > 0xff ? 1 : 0.55;
+	return total;
+}
+
+export function calculateLyricLayout(config: WallpaperConfig, now: Date): LyricLayout {
+	const { width, height } = config;
+	const frame = posterFrame(width, height);
+	const excerpt = getDailyLyric(now);
+	const longest = Math.max(...excerpt.lines.map(visualLength));
+	const cap = Math.min(width * 0.084, height * 0.05);
+	const heroSize = Math.min(cap, frame.contentWidth / (longest * 1.02));
+	const lineGap = heroSize * 1.62;
+	const centerY = height * 0.455;
+	const firstLineY = centerY - ((excerpt.lines.length - 1) * lineGap) / 2;
+	const dash: MotifLine = {
+		x1: frame.marginX,
+		y1: firstLineY - heroSize * 1.2,
+		x2: frame.marginX + width * 0.055,
+		y2: firstLineY - heroSize * 1.2,
+		accent: true,
+		width: Math.max(2, heroSize * 0.075),
+	};
+	const creditY = firstLineY + (excerpt.lines.length - 1) * lineGap + heroSize * 1.3;
+	return { frame, excerpt, heroSize, firstLineY, lineGap, dash, creditY };
 }

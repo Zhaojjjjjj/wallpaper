@@ -3,6 +3,7 @@ import {
 	TRACK_OPACITY,
 	calculateCalendarLayout,
 				calculateGenerativeLayout,
+	calculateLyricLayout,
 		calculateMinimalLayout,
 	calculateMonthLayout,
 			} from "./wallpaper-layout";
@@ -182,12 +183,32 @@ function generativeParts(config: WallpaperConfig, now: Date): Parts {
 	return { layers, shapes };
 }
 
+function lyricParts(config: WallpaperConfig, now: Date): Parts {
+	const layout = calculateLyricLayout(config, now);
+	const { accent } = config.theme;
+	const frame = layout.frame;
+	const { excerpt } = layout;
+	const layers: WallpaperTextLayer[] = [
+		eyebrowLayer("歌词 · DAILY LYRIC", frame.marginX, frame.eyebrowY, frame.eyebrowSize, "left", 0.55),
+		eyebrowLayer(excerpt.artistEn, frame.rightX, frame.eyebrowY, frame.eyebrowSize, "right", 0.5),
+	];
+	excerpt.lines.forEach((line, i) => {
+		layers.push({ text: line, x: frame.marginX, y: layout.firstLineY + i * layout.lineGap, size: layout.heroSize, weight: 500, opacity: 1, align: "left" });
+	});
+	layers.push({ text: `《${excerpt.song}》`, x: frame.marginX, y: layout.creditY, size: frame.footerSize * 1.4, weight: 500, opacity: 0.72, align: "left" });
+	layers.push(...footerLayers(`${excerpt.artist} · ${excerpt.artistEn}`, "歌词 · LYRICS", frame));
+	const dash = layout.dash;
+	const shapes = lineElement(dash.x1, dash.y1, dash.x2, dash.y2, accent, 1, dash.width ?? 3, true);
+	return { layers, shapes };
+}
+
 function partsFor(config: WallpaperConfig, now: Date): Parts {
 	switch (config.type) {
 		case "month": return monthParts(config, now);
 		case "calendar": return calendarParts(config, now);
 		case "minimal": return minimalParts(config, now);
 		case "generative": return generativeParts(config, now);
+		case "lyric": return lyricParts(config, now);
 	}
 }
 
