@@ -661,7 +661,8 @@ export function calculateLyricLayout(config: WallpaperConfig, now: Date): LyricL
 	const portraitY = height * 0.125;
 	const scale = portraitSize / 240;
 	const strokeWidth = Math.max(1.6, portraitSize * 0.0142);
-	const source = getPortrait(excerpt.artist);
+	const epochDays = Math.floor(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()) / 86400000);
+	const source = getPortrait(excerpt.artist, epochDays);
 	const portrait: GenPath[] = [
 		...source.lines.map((d) => ({ d: transformPath(d, scale, portraitX, portraitY), width: strokeWidth })),
 		...source.accents.map((d) => ({ d: transformPath(d, scale, portraitX, portraitY), width: strokeWidth, accent: true })),

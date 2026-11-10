@@ -431,9 +431,24 @@ test("lyric layout carries the day's singer portrait, distinct per artist", () =
 	for (let i = 0; i < LYRICS.length && byArtist.size < 3; i += 1) {
 		const d = new Date(start.getFullYear(), start.getMonth(), start.getDate() + i);
 		const layout = calculateLyricLayout({ ...DEFAULT_CONFIG, type: "lyric", width: 1179, height: 2556 }, d);
-		assert.ok(layout.portrait.length >= 8);
+		assert.ok(layout.portrait.length >= 5);
 		byArtist.set(layout.excerpt.artist, layout.portrait.map((p) => p.d).join("|"));
 	}
 	assert.equal(byArtist.size, 3);
 	assert.equal(new Set(byArtist.values()).size, 3);
+});
+
+import { PORTRAITS } from "./portraits";
+
+test("each singer has three portrait styles and the layout rotates through them", () => {
+	for (const artist of ["周杰伦", "陈奕迅", "赵雷"]) assert.equal(PORTRAITS[artist].length, 3);
+	const seen = new Map<string, Set<string>>();
+	const start = new Date(2026, 0, 1);
+	for (let i = 0; i < LYRICS.length; i += 1) {
+		const d = new Date(start.getFullYear(), start.getMonth(), start.getDate() + i);
+		const layout = calculateLyricLayout({ ...DEFAULT_CONFIG, type: "lyric", width: 1179, height: 2556 }, d);
+		if (!seen.has(layout.excerpt.artist)) seen.set(layout.excerpt.artist, new Set());
+		seen.get(layout.excerpt.artist)!.add(layout.portrait.map((p) => p.d).join("|"));
+	}
+	for (const artist of ["周杰伦", "陈奕迅", "赵雷"]) assert.ok((seen.get(artist)?.size ?? 0) >= 2, artist);
 });
