@@ -194,8 +194,13 @@ function lyricParts(config: WallpaperConfig, now: Date): Parts {
 		layers.push({ text: line, x: frame.marginX, y: layout.firstLineY + i * layout.lineGap, size: layout.heroSize, weight: 500, opacity: 1, align: "left" });
 	});
 	layers.push({ text: `《${excerpt.song}》`, x: frame.marginX, y: layout.creditY, size: frame.footerSize * 1.4, weight: 500, opacity: 0.72, align: "left" });
+	const { text } = config.theme;
+	let shapes = "";
+	for (const path of layout.portrait) {
+		shapes += pathElement(path.d, null, 0.92, path.accent ? accent : text, path.width);
+	}
 	const dash = layout.dash;
-	const shapes = lineElement(dash.x1, dash.y1, dash.x2, dash.y2, accent, 1, dash.width ?? 3, true);
+	shapes += lineElement(dash.x1, dash.y1, dash.x2, dash.y2, accent, 1, dash.width ?? 3, true);
 	return { layers, shapes };
 }
 

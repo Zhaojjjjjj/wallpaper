@@ -2,6 +2,7 @@ import { WallpaperConfig } from "./types";
 import { getDailyQuote } from "./calendar-quotes";
 import { getDayOfYearInfo, getMonthInfo } from "./wallpaper-progress";
 import { getDailyLyric, type LyricExcerpt } from "./lyrics";
+import { getPortrait, transformPath } from "./portraits";
 
 /**
  * Poster system shared by the Canvas engine, the SVG renderer and the PNG
@@ -631,6 +632,7 @@ export function calculateGenerativeLayout(config: WallpaperConfig, now: Date): G
 export interface LyricLayout {
 	frame: PosterFrame;
 	excerpt: LyricExcerpt;
+	portrait: GenPath[];
 	heroSize: number;
 	firstLineY: number;
 	lineGap: number;
@@ -652,11 +654,22 @@ export function calculateLyricLayout(config: WallpaperConfig, now: Date): LyricL
 	const cap = Math.min(width * 0.084, height * 0.05);
 	const heroSize = Math.min(cap, frame.contentWidth / (longest * 1.02));
 	const lineGap = heroSize * 1.62;
-	// The dash, the passage and the credit are centred as one block on the
-	// optical centre of the screen (just below halfway, clear of the clock).
+	// Portrait on top, then the dash + passage + credit centred as one block
+	// in the space that remains underneath it.
+	const portraitSize = Math.min(frame.contentWidth * 0.64, height * 0.285);
+	const portraitX = frame.marginX;
+	const portraitY = height * 0.125;
+	const scale = portraitSize / 240;
+	const strokeWidth = Math.max(1.6, portraitSize * 0.0142);
+	const source = getPortrait(excerpt.artist);
+	const portrait: GenPath[] = [
+		...source.lines.map((d) => ({ d: transformPath(d, scale, portraitX, portraitY), width: strokeWidth })),
+		...source.accents.map((d) => ({ d: transformPath(d, scale, portraitX, portraitY), width: strokeWidth, accent: true })),
+	];
 	const creditSize = frame.footerSize * 1.4;
 	const span = heroSize * 1.2 + (excerpt.lines.length - 1) * lineGap + heroSize * 1.45 + creditSize * 0.5;
-	const firstLineY = height * 0.485 - span / 2 + heroSize * 1.2;
+	const blockCenter = (portraitY + portraitSize + height * 0.955) / 2;
+	const firstLineY = blockCenter - span / 2 + heroSize * 1.2;
 	const dash: MotifLine = {
 		x1: frame.marginX,
 		y1: firstLineY - heroSize * 1.2,
@@ -666,5 +679,5 @@ export function calculateLyricLayout(config: WallpaperConfig, now: Date): LyricL
 		width: Math.max(2, heroSize * 0.075),
 	};
 	const creditY = firstLineY + (excerpt.lines.length - 1) * lineGap + heroSize * 1.45;
-	return { frame, excerpt, heroSize, firstLineY, lineGap, dash, creditY };
+	return { frame, excerpt, portrait, heroSize, firstLineY, lineGap, dash, creditY };
 }

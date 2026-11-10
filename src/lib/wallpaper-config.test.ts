@@ -421,3 +421,19 @@ test("lyric cycle covers every passage exactly once, artists are the three named
 	const after = new Date(start.getFullYear(), start.getMonth(), start.getDate() + LYRICS.length);
 	assert.notEqual(getDailyLyric(after), getDailyLyric(lastDay));
 });
+
+import { calculateLyricLayout } from "./wallpaper-layout";
+import { DEFAULT_CONFIG } from "./types";
+
+test("lyric layout carries the day's singer portrait, distinct per artist", () => {
+	const byArtist = new Map<string, string>();
+	const start = new Date(2026, 0, 1);
+	for (let i = 0; i < LYRICS.length && byArtist.size < 3; i += 1) {
+		const d = new Date(start.getFullYear(), start.getMonth(), start.getDate() + i);
+		const layout = calculateLyricLayout({ ...DEFAULT_CONFIG, type: "lyric", width: 1179, height: 2556 }, d);
+		assert.ok(layout.portrait.length >= 8);
+		byArtist.set(layout.excerpt.artist, layout.portrait.map((p) => p.d).join("|"));
+	}
+	assert.equal(byArtist.size, 3);
+	assert.equal(new Set(byArtist.values()).size, 3);
+});

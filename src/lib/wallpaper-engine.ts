@@ -287,6 +287,7 @@ private drawMotifLines(lines: MotifLine[]) {
 		const layout = calculateLyricLayout(this.config, this.now);
 		const frame = layout.frame;
 		const { excerpt } = layout;
+		this.drawGenPaths(layout.portrait);
 		this.drawMotifLines([layout.dash]);
 		excerpt.lines.forEach((line, i) => {
 			this.drawText(line, frame.marginX, layout.firstLineY + i * layout.lineGap, layout.heroSize, "500", 1, { align: "left" });
