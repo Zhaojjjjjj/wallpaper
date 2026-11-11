@@ -658,7 +658,7 @@ export function calculateLyricLayout(config: WallpaperConfig, now: Date): LyricL
 	const heroSize = Math.min(cap, frame.contentWidth / (longest * 1.02));
 	const lineGap = heroSize * 1.62;
 	// The day's album cover sits up top; the passage block centres underneath.
-	const coverSize = Math.min(frame.contentWidth * 0.96, height * 0.405);
+	const coverSize = Math.min(frame.contentWidth * 0.84, height * 0.355);
 	const coverX = frame.marginX + (frame.contentWidth - coverSize) / 2;
 	const coverY = height * 0.108;
 	const cover = { x: coverX, y: coverY, size: coverSize, url: album.cover };
