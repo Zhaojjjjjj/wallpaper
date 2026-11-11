@@ -47,27 +47,3 @@
 	font-size: 1.5rem;
 }
 
-.hero {
-	padding-top: var(--spacing-xl);
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing-sm);
-}
-
-.eyebrow {
-	font-size: 0.8rem;
-	font-weight: 600;
-	letter-spacing: 0.12em;
-	color: var(--primary);
-}
-
-.heroTitle {
-	font-size: 2.25rem;
-	line-height: 1.15;
-}
-
-.heroDesc {
-	color: var(--text-muted);
-	font-size: 1rem;
-	max-width: 34rem;
-}
