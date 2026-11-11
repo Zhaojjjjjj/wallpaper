@@ -170,7 +170,6 @@ function calendarParts(config: WallpaperConfig, now: Date): Parts {
 function generativeParts(config: WallpaperConfig, now: Date): Parts {
 	const layout = calculateGenerativeLayout(config, now);
 	const { accent, text, bg } = config.theme;
-	const frame = layout.frame;
 	// No text at all: the study stands on its own, without eyebrow or footer.
 	const layers: WallpaperTextLayer[] = [];
 	let shapes = "";

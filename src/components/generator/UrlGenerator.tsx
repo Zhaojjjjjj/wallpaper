@@ -2,10 +2,12 @@ import React, { useMemo, useState, useSyncExternalStore } from "react";
 import { WallpaperConfig } from "@/lib/types";
 import { buildWallpaperImagePath, buildWallpaperPath } from "@/lib/wallpaper-config";
 import { Input } from "@/components/common/Input";
+import { STRINGS, type Lang } from "@/lib/i18n";
 import { Button } from "@/components/common/Button";
 import styles from "./UrlGenerator.module.css";
 
 interface UrlGeneratorProps {
+	lang: Lang;
 	config: WallpaperConfig;
 }
 
@@ -15,7 +17,8 @@ const getServerOrigin = () => "";
 const getBrowserTimeZone = () => Intl.DateTimeFormat().resolvedOptions().timeZone;
 const getServerTimeZone = () => "";
 
-export const UrlGenerator: React.FC<UrlGeneratorProps> = ({ config }) => {
+export const UrlGenerator: React.FC<UrlGeneratorProps> = ({ lang, config }) => {
+	const strings = STRINGS[lang];
 	const [copyResult, setCopyResult] = useState<{ url: string; status: "success" | "error" } | null>(null);
 	const origin = useSyncExternalStore(subscribeToBrowserEnvironment, getBrowserOrigin, getServerOrigin);
 	const browserTimeZone = useSyncExternalStore(subscribeToBrowserEnvironment, getBrowserTimeZone, getServerTimeZone);
@@ -42,18 +45,18 @@ export const UrlGenerator: React.FC<UrlGeneratorProps> = ({ config }) => {
 
 	return (
 		<div className={styles.container}>
-				<h3 className={styles.title}>PNG 壁纸链接</h3>
+				<h3 className={styles.title}>{strings.urlTitle}</h3>
 				<p className={styles.desc}>
-					此链接直接返回 PNG 图片，可用于系统快捷指令、自动化工具或直接保存。
+					{strings.urlDesc}
 				</p>
 				<div className={styles.inputGroup}>
-					<Input aria-label="PNG 壁纸链接" readOnly value={url} className={styles.urlInput} />
+					<Input aria-label={strings.urlAriaLabel} readOnly value={url} className={styles.urlInput} />
 					<Button onClick={handleCopy} variant="primary" className={styles.copyBtn} disabled={!origin}>
-						{copyStatus === "success" ? "已复制！" : copyStatus === "error" ? "复制失败" : "复制链接"}
+						{copyStatus === "success" ? strings.copied : copyStatus === "error" ? strings.copyFailed : strings.copy}
 					</Button>
 				</div>
 				<a className={styles.previewLink} href={`${origin}${paths.preview}`} target="_blank" rel="noreferrer">
-					打开全屏预览
+					{strings.openPreview}
 				</a>
 		</div>
 	);

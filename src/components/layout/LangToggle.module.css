@@ -1,0 +1,34 @@
+.toggle {
+	display: inline-flex;
+	align-items: center;
+	gap: 2px;
+	padding: 2px;
+	border: 1px solid var(--border);
+	border-radius: 999px;
+	background: var(--bg-surface);
+}
+
+.option {
+	border: none;
+	background: transparent;
+	color: var(--text-muted);
+	font-size: 0.8rem;
+	font-weight: 600;
+	padding: 4px 10px;
+	border-radius: 999px;
+	cursor: pointer;
+	line-height: 1.2;
+}
+
+.option:hover {
+	color: var(--text-main);
+}
+
+.active {
+	background: var(--primary);
+	color: #fff;
+}
+
+.active:hover {
+	color: #fff;
+}

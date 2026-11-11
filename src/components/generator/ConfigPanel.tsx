@@ -8,9 +8,11 @@ import {
 	resolveWallpaperNumberDraft,
 } from "@/lib/wallpaper-config";
 import { DEVICE_CATEGORIES, DEVICE_PRESETS, DeviceCategory, getDeviceCategory, resolveDevicePresetId } from "@/lib/wallpaper-devices";
+import { STRINGS, type Lang } from "@/lib/i18n";
 import styles from "./ConfigPanel.module.css";
 
 interface ConfigPanelProps {
+	lang: Lang;
 	config: WallpaperConfig;
 	onChange: (newConfig: WallpaperConfig) => void;
 }
@@ -69,7 +71,12 @@ const NumberInput: React.FC<NumberInputProps> = ({ label, value, min, max, onCha
 	);
 };
 
-export const ConfigPanel: React.FC<ConfigPanelProps> = ({ config, onChange }) => {
+export const ConfigPanel: React.FC<ConfigPanelProps> = ({ lang, config, onChange }) => {
+	const strings = STRINGS[lang];
+	const displayDeviceName = (name: string) =>
+		lang === "en"
+			? name.replace("（展开）", strings.deviceNameSuffix.unfolded).replace("（外屏）", strings.deviceNameSuffix.cover)
+			: name;
 	const [customTheme, setCustomTheme] = useState(false);
 	const [selectedDeviceId, setSelectedDeviceId] = useState(() => resolveDevicePresetId(config.width, config.height));
 	const [tabOverride, setTabOverride] = useState<DeviceTab | null>(null);
@@ -129,7 +136,7 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ config, onChange }) =>
 
 	const handleThemeSelect = (index: number) => {
 		const theme = PRESET_THEMES[index];
-		if (theme.name === "自定义") {
+		if (index === PRESET_THEMES.length - 1) {
 			setCustomTheme(true);
 		} else {
 			setCustomTheme(false);
@@ -149,10 +156,10 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ config, onChange }) =>
 
 	return (
 		<div className={styles.panel}>
-			<h3 className={styles.sectionTitle}>设备配置</h3>
+			<h3 className={styles.sectionTitle}>{strings.deviceHeading}</h3>
 
 			<div className={styles.group}>
-				<div className={styles.tabs} role="tablist" aria-label="设备分类">
+				<div className={styles.tabs} role="tablist" aria-label={strings.deviceHeading}>
 					{DEVICE_CATEGORIES.map((category) => (
 						<button
 							key={category.id}
@@ -162,7 +169,7 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ config, onChange }) =>
 							className={`${styles.tab} ${activeTab === category.id ? styles.tabActive : ""}`}
 							onClick={() => setTabOverride(category.id)}
 						>
-							{category.name}
+							{category.id === "desktop" ? strings.deviceCategories.desktop : category.name}
 						</button>
 					))}
 					<button
@@ -172,14 +179,14 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ config, onChange }) =>
 						className={`${styles.tab} ${activeTab === "custom" ? styles.tabActive : ""}`}
 						onClick={() => setTabOverride("custom")}
 					>
-						自定义
+						{strings.deviceCategories.custom}
 					</button>
 				</div>
 
 				{activeTab === "custom" ? (
 					<div className={styles.row}>
-						<NumberInput label="宽度" value={config.width} min={320} max={4320} onChange={(value) => handleNumberChange("width", value, 320, 4320)} onBlur={(value) => handleNumberBlur("width", value, 320, 4320)} />
-						<NumberInput label="高度" value={config.height} min={320} max={7680} onChange={(value) => handleNumberChange("height", value, 320, 7680)} onBlur={(value) => handleNumberBlur("height", value, 320, 7680)} />
+						<NumberInput label={strings.width} value={config.width} min={320} max={4320} onChange={(value) => handleNumberChange("width", value, 320, 4320)} onBlur={(value) => handleNumberBlur("width", value, 320, 4320)} />
+						<NumberInput label={strings.height} value={config.height} min={320} max={7680} onChange={(value) => handleNumberChange("height", value, 320, 7680)} onBlur={(value) => handleNumberBlur("height", value, 320, 7680)} />
 					</div>
 				) : (
 					<div className={styles.deviceGrid}>
@@ -191,7 +198,7 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ config, onChange }) =>
 								aria-pressed={selectedDeviceId === device.id}
 								onClick={() => handleDeviceSelect(device.id)}
 							>
-								<span className={styles.deviceName}>{device.name}</span>
+								<span className={styles.deviceName}>{displayDeviceName(device.name)}</span>
 								<span className={styles.deviceDims}>{device.width} × {device.height}</span>
 							</button>
 						))}
@@ -199,7 +206,7 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ config, onChange }) =>
 				)}
 			</div>
 
-			<h3 className={styles.sectionTitle}>主题</h3>
+			<h3 className={styles.sectionTitle}>{strings.themeHeading}</h3>
 			<div className={styles.group}>
 				<div className={styles.themeGrid}>
 					{PRESET_THEMES.map((theme, index) => (
@@ -212,23 +219,23 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ config, onChange }) =>
 							<div className={styles.themePreview} style={{ background: theme.bg || config.theme.bg }}>
 								<div className={styles.themeDot} style={{ background: theme.accent || config.theme.accent }} />
 							</div>
-							<span className={styles.themeName}>{theme.name}</span>
+							<span className={styles.themeName}>{strings.themeNames[index]}</span>
 						</button>
 					))}
 				</div>
 
 				{customTheme && (
 					<div className={styles.row}>
-						<Input label="背景色" type="color" value={config.theme.bg} onChange={(e) => handleChange("theme.bg", e.target.value)} />
-						<Input label="强调色" type="color" value={config.theme.accent} onChange={(e) => handleChange("theme.accent", e.target.value)} />
-						<Input label="文字色" type="color" value={config.theme.text} onChange={(e) => handleChange("theme.text", e.target.value)} />
+						<Input label={strings.colorBg} type="color" value={config.theme.bg} onChange={(e) => handleChange("theme.bg", e.target.value)} />
+						<Input label={strings.colorAccent} type="color" value={config.theme.accent} onChange={(e) => handleChange("theme.accent", e.target.value)} />
+						<Input label={strings.colorText} type="color" value={config.theme.text} onChange={(e) => handleChange("theme.text", e.target.value)} />
 					</div>
 				)}
 			</div>
 
-			<h3 className={styles.sectionTitle}>详细设置</h3>
+			<h3 className={styles.sectionTitle}>{strings.detailsHeading}</h3>
 			<div className={styles.group}>
-				<p className={styles.hint}>此样式无需额外设置，只需自定义主题即可！</p>
+				<p className={styles.hint}>{strings.detailsHint}</p>
 			</div>
 		</div>
 	);

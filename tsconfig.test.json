@@ -17,6 +17,8 @@
     "src/lib/wallpaper-layout.ts",
     "src/lib/wallpaper-progress.ts",
     "src/lib/wallpaper-svg.ts",
-    "src/lib/wallpaper-time.ts"
+    "src/lib/wallpaper-time.ts",
+    "src/lib/i18n.ts",
+    "src/lib/i18n.test.ts"
   ]
 }
