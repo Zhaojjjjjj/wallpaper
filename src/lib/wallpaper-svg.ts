@@ -1,4 +1,5 @@
-import { WallpaperConfig } from "./types";
+import { lyricFontStack, resolveLyricFont } from "./lyric-fonts";
+import { WallpaperConfig, LyricFont } from "./types";
 import {
 	TRACK_OPACITY,
 	calculateCalendarLayout,
@@ -23,6 +24,8 @@ export interface WallpaperTextLayer {
 	align?: "left" | "right";
 	/** Letter tracking in px. */
 	tracking?: number;
+	/** Lyric typeface for this layer; renderers map it to a registered family. */
+	font?: LyricFont;
 }
 
 const WEEKDAY_LETTERS = ["一", "二", "三", "四", "五", "六", "日"];
@@ -51,7 +54,7 @@ export function svgToDataUrl(svg: string): string {
 function textElement(layer: WallpaperTextLayer, defaultColor: string): string {
 	const anchor = layer.align === "left" ? "start" : layer.align === "right" ? "end" : "middle";
 	const tracking = layer.tracking ? ` letter-spacing="${layer.tracking}"` : "";
-	return `<text x="${layer.x}" y="${layer.y}" fill="${layer.color ?? defaultColor}" font-family="Arial, sans-serif" font-size="${layer.size}" font-weight="${layer.weight}" opacity="${layer.opacity}" text-anchor="${anchor}" dominant-baseline="middle"${tracking}>${escapeXml(layer.text)}</text>`;
+	return `<text x="${layer.x}" y="${layer.y}" fill="${layer.color ?? defaultColor}" font-family="${layer.font ? lyricFontStack(layer.font) : "Arial, sans-serif"}" font-size="${layer.size}" font-weight="${layer.weight}" opacity="${layer.opacity}" text-anchor="${anchor}" dominant-baseline="middle"${tracking}>${escapeXml(layer.text)}</text>`;
 }
 
 function lineElement(x1: number, y1: number, x2: number, y2: number, color: string, opacity: number, width: number, round = false): string {
@@ -189,12 +192,13 @@ function lyricParts(config: WallpaperConfig, now: Date): Parts {
 	const { excerpt } = layout;
 	// No eyebrow, no footer: the passage and its credit stand alone.
 	const layers: WallpaperTextLayer[] = [];
+	const font = resolveLyricFont(config.font);
 	excerpt.lines.forEach((line, i) => {
-		layers.push({ text: line, x: frame.marginX, y: layout.firstLineY + i * layout.lineGap, size: layout.heroSize, weight: 500, opacity: 1, align: "left" });
+		layers.push({ text: line, x: frame.marginX, y: layout.firstLineY + i * layout.lineGap, size: layout.heroSize, weight: 500, opacity: 1, align: "left", font });
 	});
-	layers.push({ text: `《${excerpt.song}》`, x: frame.marginX, y: layout.creditY, size: frame.footerSize * 1.4, weight: 500, opacity: 0.72, align: "left" });
+	layers.push({ text: `《${excerpt.song}》`, x: frame.marginX, y: layout.creditY, size: frame.footerSize * 1.4, weight: 500, opacity: 0.72, align: "left", font });
 	if (layout.album.album) {
-		layers.push({ text: `${layout.album.album} · ${layout.album.year}`, x: frame.marginX, y: layout.albumY, size: frame.footerSize * 1.12, weight: 400, opacity: 0.55, align: "left" });
+		layers.push({ text: `${layout.album.album} · ${layout.album.year}`, x: frame.marginX, y: layout.albumY, size: frame.footerSize * 1.12, weight: 400, opacity: 0.55, align: "left", font });
 	}
 	let shapes = "";
 	if (layout.cover.url) {

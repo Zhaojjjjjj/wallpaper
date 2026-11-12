@@ -5,6 +5,7 @@ import { millisecondsUntilWallpaperUpdate } from "@/lib/wallpaper-time";
 import { getDailyLyric } from "@/lib/lyrics";
 import { ALBUM_BY_SONG } from "@/lib/albums";
 import { toWallClockDate } from "@/lib/wallpaper-progress";
+import { lyricFontName } from "@/lib/lyric-fonts";
 
 interface WallpaperCanvasProps {
 	config: WallpaperConfig;
@@ -36,6 +37,10 @@ export const WallpaperCanvas: React.FC<WallpaperCanvasProps> = ({ config, classN
 			engine.render();
 		};
 		if (config.type === "lyric") {
+			const family = lyricFontName(config.font);
+			if (family !== "Noto Sans SC" && typeof document !== "undefined" && document.fonts) {
+				document.fonts.load(`32px "${family}"`, "歌词").then(() => render()).catch(() => undefined);
+			}
 			const wallNow = toWallClockDate(new Date(), config.timeZone);
 			const url = ALBUM_BY_SONG[getDailyLyric(wallNow).song]?.cover;
 			if (url) {

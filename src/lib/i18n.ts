@@ -1,4 +1,4 @@
-import type { WallpaperType } from "./types";
+import type { LyricFont, WallpaperType } from "./types";
 
 export type Lang = "zh" | "en";
 
@@ -29,6 +29,8 @@ const zh = {
 	colorAccent: "强调色",
 	colorText: "文字色",
 	detailsHeading: "详细设置",
+	fontHeading: "歌词字体",
+	fontNames: { wenkai: "霞鹜文楷", serif: "思源宋体", brush: "马善政楷", sans: "思源黑体" } as Record<LyricFont, string>,
 	detailsHint: "此样式无需额外设置，只需自定义主题即可！",
 	urlTitle: "PNG 壁纸链接",
 	urlDesc: "此链接直接返回 PNG 图片，可用于系统快捷指令、自动化工具或直接保存。",
@@ -85,6 +87,8 @@ const en: Strings = {
 	colorAccent: "Accent",
 	colorText: "Text",
 	detailsHeading: "Details",
+	fontHeading: "Lyric font",
+	fontNames: { wenkai: "LXGW WenKai", serif: "Noto Serif SC", brush: "Ma Shan Zheng", sans: "Noto Sans SC" } as Record<LyricFont, string>,
 	detailsHint: "This style needs no extra settings — just pick a theme.",
 	urlTitle: "PNG wallpaper link",
 	urlDesc: "This link returns a PNG image directly — use it in Shortcuts, automation tools, or just save it.",

@@ -2,11 +2,19 @@ export const WALLPAPER_TYPES = ["month", "calendar", "minimal", "generative", "l
 
 export type WallpaperType = (typeof WALLPAPER_TYPES)[number];
 
+export const LYRIC_FONTS = ["wenkai", "serif", "brush", "sans"] as const;
+
+export type LyricFont = (typeof LYRIC_FONTS)[number];
+
+export const DEFAULT_LYRIC_FONT: LyricFont = "wenkai";
+
 export interface WallpaperConfig {
 	type: WallpaperType;
 	width: number;
 	height: number;
 	timeZone?: string;
+	/** Lyric type only: typeface for the passage and credits. */
+	font?: LyricFont;
 	// Visuals
 	theme: {
 		bg: string;

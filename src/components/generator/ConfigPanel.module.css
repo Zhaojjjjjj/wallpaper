@@ -157,3 +157,35 @@
 	color: var(--text-muted);
 	font-family: var(--font-mono);
 }
+
+.fieldLabel {
+	font-size: 0.85rem;
+	font-weight: 600;
+	color: var(--text-main);
+}
+
+.fontGrid {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: var(--spacing-sm);
+}
+
+.fontOption {
+	padding: var(--spacing-sm) var(--spacing-md);
+	background: var(--bg-card);
+	border: 2px solid var(--border);
+	border-radius: var(--radius-md);
+	font-size: 1.05rem;
+	color: var(--text-main);
+	cursor: pointer;
+	text-align: center;
+}
+
+.fontOption:hover {
+	border-color: var(--primary);
+}
+
+.fontOptionActive {
+	border-color: var(--primary);
+	background: #f5f3ff;
+}

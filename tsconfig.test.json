@@ -19,6 +19,8 @@
     "src/lib/wallpaper-svg.ts",
     "src/lib/wallpaper-time.ts",
     "src/lib/i18n.ts",
-    "src/lib/i18n.test.ts"
+    "src/lib/i18n.test.ts",
+    "src/lib/lyric-fonts.ts",
+    "src/lib/lyric-font.test.ts"
   ]
 }

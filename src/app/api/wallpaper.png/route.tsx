@@ -4,12 +4,21 @@ import path from "node:path";
 import { findWallpaperQueryIssues, parseWallpaperConfig } from "@/lib/wallpaper-config";
 import { getWallpaperTextLayers, renderWallpaperSvg, svgToDataUrl } from "@/lib/wallpaper-svg";
 import { calculateLyricLayout } from "@/lib/wallpaper-layout";
+import { LYRIC_FONT_NAMES } from "@/lib/lyric-fonts";
+import { LYRIC_FONTS } from "@/lib/types";
 import { toWallClockDate } from "@/lib/wallpaper-progress";
 import { getWallpaperCacheSeconds } from "@/lib/wallpaper-time";
 
 export const runtime = "nodejs";
-const notoSansSc = readFile(path.join(process.cwd(), "src/app/api/wallpaper.png/NotoSansSC-Regular.otf"))
-	.then((font) => font.buffer.slice(font.byteOffset, font.byteOffset + font.byteLength) as ArrayBuffer);
+const loadFont = (file: string) =>
+	readFile(path.join(process.cwd(), "src/app/api/wallpaper.png", file))
+		.then((font) => font.buffer.slice(font.byteOffset, font.byteOffset + font.byteLength) as ArrayBuffer);
+
+const notoSansSc = loadFont("NotoSansSC-Regular.otf");
+const lyricFontFiles = { wenkai: "fonts/wenkai-lyric.woff", serif: "fonts/serif-lyric.woff", brush: "fonts/brush-lyric.woff" } as const;
+const lyricFontData = Object.fromEntries(
+	Object.entries(lyricFontFiles).map(([id, file]) => [id, loadFont(file)])
+) as Record<keyof typeof lyricFontFiles, Promise<ArrayBuffer>>;
 
 export async function GET(request: Request) {
 	const searchParams = new URL(request.url).searchParams;
@@ -31,6 +40,14 @@ export async function GET(request: Request) {
 	const filename = `lifegrid-${config.type}-${config.width}x${config.height}.png`;
 	const cacheSeconds = getWallpaperCacheSeconds(instant, config.timeZone);
 	const fontData = await notoSansSc;
+	const lyricFonts = await Promise.all(
+		LYRIC_FONTS.filter((id) => id !== "sans").map(async (id) => ({
+			name: LYRIC_FONT_NAMES[id],
+			data: await lyricFontData[id as keyof typeof lyricFontFiles],
+			weight: 400 as const,
+			style: "normal" as const,
+		}))
+	);
 
 	return new ImageResponse(
 		(
@@ -59,7 +76,7 @@ export async function GET(request: Request) {
 							transform: layer.align === "left" ? "translate(0, -50%)" : layer.align === "right" ? "translate(-100%, -50%)" : "translate(-50%, -50%)",
 						...(layer.tracking ? { letterSpacing: `${layer.tracking}px` } : {}),
 							color: layer.color ?? config.theme.text,
-							fontFamily: "Noto Sans SC",
+							fontFamily: layer.font ? LYRIC_FONT_NAMES[layer.font] : "Noto Sans SC",
 							fontSize: layer.size,
 							fontWeight: layer.weight,
 							opacity: layer.opacity,
@@ -79,6 +96,7 @@ export async function GET(request: Request) {
 					weight: 400,
 					style: "normal",
 				},
+				...lyricFonts,
 			],
 			width: config.width,
 			height: config.height,

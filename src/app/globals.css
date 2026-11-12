@@ -109,3 +109,25 @@ select {
 ::-webkit-scrollbar-thumb:hover {
 	background: var(--border-hover);
 }
+
+/* Lyric typefaces (subsets covering the full lyric library) */
+@font-face {
+	font-family: "LXGW WenKai";
+	src: url("/fonts/wenkai-lyric.woff") format("woff");
+	font-weight: 400 700;
+	font-display: swap;
+}
+
+@font-face {
+	font-family: "Noto Serif SC";
+	src: url("/fonts/serif-lyric.woff") format("woff");
+	font-weight: 400 700;
+	font-display: swap;
+}
+
+@font-face {
+	font-family: "Ma Shan Zheng";
+	src: url("/fonts/brush-lyric.woff") format("woff");
+	font-weight: 400;
+	font-display: swap;
+}

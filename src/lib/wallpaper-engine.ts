@@ -1,3 +1,4 @@
+import { lyricFontStack } from "./lyric-fonts";
 import { WallpaperConfig } from "./types";
 import { toWallClockDate } from "./wallpaper-progress";
 import {
@@ -17,6 +18,7 @@ interface TextOptions {
 	align?: TextAlignOption;
 	alpha?: number;
 	tracking?: number;
+	fontStack?: string;
 }
 
 const WEEKDAY_LETTERS = ["一", "二", "三", "四", "五", "六", "日"];
@@ -101,7 +103,7 @@ export class WallpaperEngine {
 		this.ctx.save();
 		this.ctx.globalAlpha = options.alpha ?? opacity;
 		this.ctx.fillStyle = options.color ?? theme.text;
-		this.ctx.font = `${weight} ${size}px ${WALLPAPER_FONT_STACK}`;
+		this.ctx.font = `${weight} ${size}px ${options.fontStack ?? WALLPAPER_FONT_STACK}`;
 		this.ctx.textAlign = options.align ?? "center";
 		this.ctx.textBaseline = "middle";
 		this.setTracking(options.tracking ?? 0);
@@ -312,12 +314,13 @@ private drawMotifLines(lines: MotifLine[]) {
 			ctx.restore();
 		}
 		this.drawMotifLines([layout.dash]);
+		const fontStack = lyricFontStack(this.config.font);
 		excerpt.lines.forEach((line, i) => {
-			this.drawText(line, frame.marginX, layout.firstLineY + i * layout.lineGap, layout.heroSize, "500", 1, { align: "left" });
+			this.drawText(line, frame.marginX, layout.firstLineY + i * layout.lineGap, layout.heroSize, "500", 1, { align: "left", fontStack });
 		});
-		this.drawText(`《${excerpt.song}》`, frame.marginX, layout.creditY, frame.footerSize * 1.4, "500", 0.72, { align: "left" });
+		this.drawText(`《${excerpt.song}》`, frame.marginX, layout.creditY, frame.footerSize * 1.4, "500", 0.72, { align: "left", fontStack });
 		if (layout.album.album) {
-			this.drawText(`${layout.album.album} · ${layout.album.year}`, frame.marginX, layout.albumY, frame.footerSize * 1.12, "400", 0.55, { align: "left" });
+			this.drawText(`${layout.album.album} · ${layout.album.year}`, frame.marginX, layout.albumY, frame.footerSize * 1.12, "400", 0.55, { align: "left", fontStack });
 		}
 	}
 

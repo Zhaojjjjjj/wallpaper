@@ -9,6 +9,8 @@ import {
 } from "@/lib/wallpaper-config";
 import { DEVICE_CATEGORIES, DEVICE_PRESETS, DeviceCategory, getDeviceCategory, resolveDevicePresetId } from "@/lib/wallpaper-devices";
 import { STRINGS, type Lang } from "@/lib/i18n";
+import { DEFAULT_LYRIC_FONT, LYRIC_FONTS } from "@/lib/types";
+import { lyricFontStack } from "@/lib/lyric-fonts";
 import styles from "./ConfigPanel.module.css";
 
 interface ConfigPanelProps {
@@ -235,7 +237,27 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ lang, config, onChange
 
 			<h3 className={styles.sectionTitle}>{strings.detailsHeading}</h3>
 			<div className={styles.group}>
-				<p className={styles.hint}>{strings.detailsHint}</p>
+				{config.type === "lyric" ? (
+					<>
+						<span className={styles.fieldLabel}>{strings.fontHeading}</span>
+						<div className={styles.fontGrid}>
+							{LYRIC_FONTS.map((id) => (
+								<button
+									key={id}
+									type="button"
+									className={`${styles.fontOption} ${(config.font ?? DEFAULT_LYRIC_FONT) === id ? styles.fontOptionActive : ""}`}
+									aria-pressed={(config.font ?? DEFAULT_LYRIC_FONT) === id}
+									style={{ fontFamily: lyricFontStack(id) }}
+									onClick={() => onChange({ ...config, font: id })}
+								>
+									{strings.fontNames[id]}
+								</button>
+							))}
+						</div>
+					</>
+				) : (
+					<p className={styles.hint}>{strings.detailsHint}</p>
+				)}
 			</div>
 		</div>
 	);

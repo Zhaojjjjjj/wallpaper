@@ -1,16 +1,16 @@
-import { DEFAULT_CONFIG, WALLPAPER_TYPES, WallpaperConfig, WallpaperType } from "./types";
+import { DEFAULT_CONFIG, DEFAULT_LYRIC_FONT, LYRIC_FONTS, LyricFont, WALLPAPER_TYPES, WallpaperConfig, WallpaperType } from "./types";
 
 const SUPPORTED_TYPES = new Set<string>(WALLPAPER_TYPES);
 const HEX_COLOR = /^#[0-9a-f]{6}$/i;
 export const MAX_CANVAS_PIXELS = 8_388_608;
-const WALLPAPER_QUERY_KEYS = new Set(["type", "width", "height", "bg", "accent", "text", "timeZone"]);
+const WALLPAPER_QUERY_KEYS = new Set(["type", "width", "height", "bg", "accent", "text", "timeZone", "font"]);
 const COMMON_WALLPAPER_QUERY_KEYS = new Set(["type", "width", "height", "bg", "accent", "text", "timeZone"]);
 const TYPE_SPECIFIC_QUERY_KEYS: Record<WallpaperType, ReadonlySet<string>> = {
 	month: new Set(),
 	calendar: new Set(),
 	minimal: new Set(),
 	generative: new Set(),
-	lyric: new Set(),
+	lyric: new Set(["font"]),
 };
 
 function normalizeType(value: string | null): WallpaperType {
@@ -121,9 +121,15 @@ function isWallpaperQueryValueValid(key: string, value: string): boolean {
 			return HEX_COLOR.test(value);
 		case "timeZone":
 			return normalizeTimeZone(value) !== undefined;
+		case "font":
+			return (LYRIC_FONTS as readonly string[]).includes(value);
 		default:
 			return false;
 	}
+}
+
+function normalizeLyricFont(value: string | null): LyricFont {
+	return value && (LYRIC_FONTS as readonly string[]).includes(value) ? (value as LyricFont) : DEFAULT_LYRIC_FONT;
 }
 
 export function parseWallpaperConfig(searchParams: Pick<URLSearchParams, "get">): WallpaperConfig {
@@ -133,11 +139,13 @@ export function parseWallpaperConfig(searchParams: Pick<URLSearchParams, "get">)
 		normalizeWallpaperInteger(searchParams.get("height"), 320, 7680, DEFAULT_CONFIG.height)
 	);
 
+	const type = normalizeType(searchParams.get("type"));
 	return {
-		type: normalizeType(searchParams.get("type")),
+		type,
 		width: dimensions.width,
 		height: dimensions.height,
 		timeZone: normalizeTimeZone(searchParams.get("timeZone")),
+		...(type === "lyric" ? { font: normalizeLyricFont(searchParams.get("font")) } : {}),
 		theme: {
 			bg: normalizeColor(searchParams.get("bg"), DEFAULT_CONFIG.theme.bg),
 			accent,
@@ -157,6 +165,7 @@ function normalizeWallpaperConfig(config: WallpaperConfig): WallpaperConfig {
 	});
 
 	if (config.timeZone !== undefined) params.set("timeZone", config.timeZone);
+	if (config.type === "lyric" && config.font !== undefined) params.set("font", config.font);
 
 	return parseWallpaperConfig(params);
 }
@@ -173,6 +182,7 @@ function buildWallpaperQueryParams(input: WallpaperConfig): URLSearchParams {
 	});
 
 	if (config.timeZone) params.set("timeZone", config.timeZone);
+	if (config.type === "lyric") params.set("font", config.font ?? DEFAULT_LYRIC_FONT);
 
 	return params;
 }
