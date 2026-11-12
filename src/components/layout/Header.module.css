@@ -43,3 +43,17 @@
 .link:hover {
 	color: var(--text-main);
 }
+
+@media (max-width: 480px) {
+	.logo {
+		font-size: 1.3rem;
+	}
+
+	.link {
+		display: none;
+	}
+
+	.nav {
+		gap: var(--spacing-md);
+	}
+}

@@ -60,3 +60,26 @@
 	flex-shrink: 0;
 	margin-top: 5px;
 }
+
+@media (max-width: 700px) {
+	.grid {
+		grid-template-columns: 1fr 1fr;
+		gap: var(--spacing-sm);
+	}
+
+	.preview {
+		height: 104px;
+	}
+
+	.body {
+		padding: var(--spacing-sm);
+	}
+
+	.name {
+		font-size: 0.9rem;
+	}
+
+	.desc {
+		font-size: 0.75rem;
+	}
+}
