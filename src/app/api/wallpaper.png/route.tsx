@@ -5,20 +5,20 @@ import { findWallpaperQueryIssues, parseWallpaperConfig } from "@/lib/wallpaper-
 import { getWallpaperTextLayers, renderWallpaperSvg, svgToDataUrl } from "@/lib/wallpaper-svg";
 import { calculateLyricLayout } from "@/lib/wallpaper-layout";
 import { LYRIC_FONT_NAMES } from "@/lib/lyric-fonts";
-import { LYRIC_FONTS } from "@/lib/types";
+import type { LyricFont } from "@/lib/types";
 import { toWallClockDate } from "@/lib/wallpaper-progress";
 import { getWallpaperCacheSeconds } from "@/lib/wallpaper-time";
 
 export const runtime = "nodejs";
-const loadFont = (file: string) =>
-	readFile(path.join(process.cwd(), "src/app/api/wallpaper.png", file))
-		.then((font) => font.buffer.slice(font.byteOffset, font.byteOffset + font.byteLength) as ArrayBuffer);
+const toArrayBuffer = (font: Buffer) => font.buffer.slice(font.byteOffset, font.byteOffset + font.byteLength) as ArrayBuffer;
 
-const notoSansSc = loadFont("NotoSansSC-Regular.otf");
-const lyricFontFiles = { wenkai: "fonts/wenkai-lyric.woff", serif: "fonts/serif-lyric.woff", brush: "fonts/brush-lyric.woff" } as const;
-const lyricFontData = Object.fromEntries(
-	Object.entries(lyricFontFiles).map(([id, file]) => [id, loadFont(file)])
-) as Record<keyof typeof lyricFontFiles, Promise<ArrayBuffer>>;
+// Literal paths so the deployment file tracing bundles the font files.
+const notoSansSc = readFile(path.join(process.cwd(), "src/app/api/wallpaper.png/NotoSansSC-Regular.otf")).then(toArrayBuffer);
+const lyricFontData: Partial<Record<LyricFont, Promise<ArrayBuffer | null>>> = {
+	wenkai: readFile(path.join(process.cwd(), "src/app/api/wallpaper.png/fonts/wenkai-lyric.woff")).then(toArrayBuffer).catch(() => null),
+	serif: readFile(path.join(process.cwd(), "src/app/api/wallpaper.png/fonts/serif-lyric.woff")).then(toArrayBuffer).catch(() => null),
+	brush: readFile(path.join(process.cwd(), "src/app/api/wallpaper.png/fonts/brush-lyric.woff")).then(toArrayBuffer).catch(() => null),
+};
 
 export async function GET(request: Request) {
 	const searchParams = new URL(request.url).searchParams;
@@ -40,14 +40,15 @@ export async function GET(request: Request) {
 	const filename = `lifegrid-${config.type}-${config.width}x${config.height}.png`;
 	const cacheSeconds = getWallpaperCacheSeconds(instant, config.timeZone);
 	const fontData = await notoSansSc;
-	const lyricFonts = await Promise.all(
-		LYRIC_FONTS.filter((id) => id !== "sans").map(async (id) => ({
-			name: LYRIC_FONT_NAMES[id],
-			data: await lyricFontData[id as keyof typeof lyricFontFiles],
-			weight: 400 as const,
-			style: "normal" as const,
-		}))
-	);
+	// Lyric subsets load only for the lyric type, and a missing file degrades
+	// to the base font instead of failing the whole render.
+	const lyricFonts: { name: string; data: ArrayBuffer; weight: 400; style: "normal" }[] = [];
+	if (config.type === "lyric") {
+		for (const id of ["wenkai", "serif", "brush"] as const) {
+			const data = await lyricFontData[id];
+			if (data) lyricFonts.push({ name: LYRIC_FONT_NAMES[id], data, weight: 400, style: "normal" });
+		}
+	}
 
 	return new ImageResponse(
 		(
