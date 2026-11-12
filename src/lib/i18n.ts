@@ -42,10 +42,11 @@ const zh = {
 	guideShortcutHeading: "第一步 · 建快捷指令",
 	guideAutomationHeading: "第二步 · 设为每天自动运行",
 	guideShortcutSteps: [
+		"先备一个「照片」锁屏：长按锁屏空白处，点右下角「+」，选「照片」随便挑一张图建好，并切换到这个锁屏。设定墙纸只能替换照片类锁屏的图，系统自带的渐变、天文类墙纸不行——跳过这步就会报「无法在选定墙纸上设定照片」。",
 		"在上方选好样式和自己手机的机型，点「复制链接」把 PNG 壁纸链接复制下来（机型不对，壁纸会被裁切）。",
 		"打开 iPhone 自带的「快捷指令」App，点右上角「+」新建快捷指令。",
 		"搜索并添加「获取 URL 内容」，把链接粘贴到 URL 一栏。",
-		"搜索「墙纸」，添加「设定墙纸照片」，点开它选择「锁定屏幕」（可同时勾主屏幕）；再点右侧箭头展开选项，关掉「显示预览」和「裁剪到主体」——后者不关，iOS 会自动放大裁图，排版就乱了。",
+		"搜索「墙纸」，添加「设定墙纸照片」：点「墙纸」选中第 1 步建的那个照片锁屏，范围选「锁定屏幕」（可同时勾主屏幕）；再点右侧箭头展开选项，关掉「显示预览」和「裁剪到主体」——后者不关，iOS 会自动放大裁图，排版就乱了。",
 		"命名为「每日壁纸」，点运行按钮先手动测试一次；弹出权限提示时选「始终允许」，锁屏换上新图即成功。",
 	],
 	guideAutomationSteps: [
@@ -97,10 +98,11 @@ const en: Strings = {
 	guideShortcutHeading: "Step 1 · Build the shortcut",
 	guideAutomationHeading: "Step 2 · Run it every day",
 	guideShortcutSteps: [
+		"First, prepare a Photo Lock Screen: long-press an empty area of the Lock Screen, tap “+”, choose “Photos”, pick any photo, add it, and switch to that Lock Screen. Wallpaper actions can only replace the photo of a photo-type Lock Screen — Apple's built-in gradient or astronomy wallpapers can't, and skipping this step gets you “Unable to set a photo on the selected wallpaper”.",
 		"Pick your style and your exact phone model above, then tap “Copy link” to copy the PNG wallpaper link (the wrong model size gets cropped).",
 		"Open the Shortcuts app and tap “+” in the top right to create a new shortcut.",
 		"Search for and add “Get Contents of URL”, then paste the link into the URL field.",
-		"Search “wallpaper” and add “Set Wallpaper Photo”. Open it and choose “Lock Screen” (you can add the Home Screen too); then tap the arrow to expand the options and turn off “Show Preview” and “Crop to Subject” — leave Crop to Subject on and iOS will zoom and crop the image, breaking the layout.",
+		"Search “wallpaper” and add “Set Wallpaper Photo”: tap “Wallpaper” and pick the Photo Lock Screen from step 1, set the scope to “Lock Screen” (Home Screen optional); then tap the arrow to expand the options and turn off “Show Preview” and “Crop to Subject” — leave Crop to Subject on and iOS will zoom and crop the image, breaking the layout.",
 		"Name it “Daily Wallpaper” and run it once to test; if a permission prompt appears, choose “Always Allow”. A new wallpaper on your Lock Screen means it works.",
 	],
 	guideAutomationSteps: [
