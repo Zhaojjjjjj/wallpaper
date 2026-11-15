@@ -403,7 +403,7 @@ test("daily lyric is deterministic within a day and changes the next day", () =>
 });
 
 test("lyric cycle covers every passage exactly once, artists are the three named", () => {
-	assert.deepEqual([...new Set(LYRICS.map((l) => l.artist))].sort(), ["周杰伦", "赵雷", "陈奕迅"].sort());
+	assert.deepEqual([...new Set(LYRICS.map((l) => l.artist))].sort(), ["周杰伦", "赵雷", "陈奕迅", "邓紫棋", "薛之谦"].sort());
 	const seen = new Set<string>();
 	// Align the window to a shuffle-cycle boundary (epochDay % count === 0).
 	const start = new Date(2026, 0, 1);
@@ -434,7 +434,7 @@ test("every lyric song maps to an album; only the 2003 EP songs lack a cover", (
 		const info = ALBUM_BY_SONG[excerpt.song];
 		assert.ok(info, excerpt.song);
 		assert.ok(info.album.length > 0, excerpt.song);
-		assert.ok(info.year >= 2000 && info.year <= 2022, excerpt.song);
+		assert.ok(info.year >= 1990 && info.year <= 2026, excerpt.song);
 	}
 	const coverless = Object.entries(ALBUM_BY_SONG).filter(([, v]) => !v.cover).map(([k]) => k).sort();
 	assert.deepEqual(coverless, ["断了的弦", "轨迹"]);
@@ -442,8 +442,8 @@ test("every lyric song maps to an album; only the 2003 EP songs lack a cover", (
 
 test("lyric layout carries the day's album cover and credits the album", () => {
 	const layout = calculateLyricLayout({ ...DEFAULT_CONFIG, type: "lyric", width: 1179, height: 2556 }, new Date(2026, 10, 10));
-	assert.equal(layout.excerpt.song, "晴天");
-	assert.equal(layout.album.album, "叶惠美");
+	assert.equal(layout.excerpt.song, "任我行");
+	assert.equal(layout.album.album, "The Key");
 	assert.ok(layout.cover.url?.includes("600x600bb"));
 	assert.ok(layout.albumY > layout.creditY);
 });
