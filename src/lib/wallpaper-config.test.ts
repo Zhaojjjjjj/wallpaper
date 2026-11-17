@@ -442,8 +442,8 @@ test("every lyric song maps to an album; only the 2003 EP songs lack a cover", (
 
 test("lyric layout carries the day's album cover and credits the album", () => {
 	const layout = calculateLyricLayout({ ...DEFAULT_CONFIG, type: "lyric", width: 1179, height: 2556 }, new Date(2026, 10, 10));
-	assert.equal(layout.excerpt.song, "开不了口");
-	assert.equal(layout.album.album, "范特西");
+	assert.equal(layout.excerpt.song, "病态");
+	assert.equal(layout.album.album, "尘");
 	assert.ok(layout.cover.url?.includes("600x600bb"));
 	assert.ok(layout.albumY > layout.creditY);
 });
