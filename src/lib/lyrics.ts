@@ -177,6 +177,7 @@ export const LYRICS: LyricExcerpt[] = [
 	{ artist: GEM, artistEn: GEM_EN, song: "回忆的沙漏", lines: ["拼图一片片失落，像枫叶的冷漠", "墙上的钟，默默数着寂寞"] },
 	{ artist: GEM, artistEn: GEM_EN, song: "喜欢你", lines: ["喜欢你，那双眼动人", "笑声更迷人"] },
 	{ artist: GEM, artistEn: GEM_EN, song: "你把我灌醉", lines: ["你把我灌醉，你让我流泪", "扛下了所有罪，我拼命挽回"] },
+	{ artist: GEM, artistEn: GEM_EN, song: "来自天堂的魔鬼", lines: ["我见过天使", "遇过魔鬼"] },
 
 	// 薛之谦
 	{ artist: XUE, artistEn: XUE_EN, song: "演员", lines: ["简单点", "说话的方式简单点"] },
@@ -194,6 +195,7 @@ export const LYRICS: LyricExcerpt[] = [
 	{ artist: XUE, artistEn: XUE_EN, song: "高尚", lines: ["我多高尚", "向自尊开了枪"] },
 	{ artist: XUE, artistEn: XUE_EN, song: "天外来物", lines: ["你像天外来物一样", "求之不得"] },
 	{ artist: XUE, artistEn: XUE_EN, song: "暧昧", lines: ["反正现在的感情都暧昧", "你大可不必为难，找般配"] },
+	{ artist: XUE, artistEn: XUE_EN, song: "我好像在哪见过你", lines: ["我好像在哪见过你", "我在劝我该忘了你"] },
 ];
 
 function mulberry32(seed: number): () => number {

@@ -135,4 +135,6 @@ export const ALBUM_BY_SONG: Record<string, AlbumInfo> = {
 	"高尚": { album: "渡 The Crossing", year: 2017, cover: "https://is1-ssl.mzstatic.com/image/thumb/Music211/v4/5a/9a/71/5a9a718c-5a62-5ad3-cede-ab37eeb8d419/9555150715829.jpg/600x600bb.jpg" },
 	"暧昧": { album: "渡 The Crossing", year: 2017, cover: "https://is1-ssl.mzstatic.com/image/thumb/Music211/v4/5a/9a/71/5a9a718c-5a62-5ad3-cede-ab37eeb8d419/9555150715829.jpg/600x600bb.jpg" },
 	"天外来物": { album: "天外来物", year: 2020, cover: "https://is1-ssl.mzstatic.com/image/thumb/Music221/v4/09/8c/a7/098ca759-9752-fe44-ca39-a58ea4fcf4b7/6941636700824.jpg/600x600bb.jpg" },
+	"来自天堂的魔鬼": { album: "新的心跳", year: 2015, cover: "https://is1-ssl.mzstatic.com/image/thumb/Music124/v4/55/bb/c7/55bbc782-299e-7f24-bc4a-ae129e6d8030/mzm.rpqttxch.jpg/600x600bb.jpg" },
+	"我好像在哪见过你": { album: "初学者", year: 2016, cover: "https://is1-ssl.mzstatic.com/image/thumb/Music221/v4/b0/09/04/b009043f-f576-54ce-5b1f-d7896d6933c0/9555150772273.jpg/600x600bb.jpg" },
 };
