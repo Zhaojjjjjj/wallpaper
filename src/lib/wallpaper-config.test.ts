@@ -437,13 +437,13 @@ test("every lyric song maps to an album; only the 2003 EP songs lack a cover", (
 		assert.ok(info.year >= 1990 && info.year <= 2026, excerpt.song);
 	}
 	const coverless = Object.entries(ALBUM_BY_SONG).filter(([, v]) => !v.cover).map(([k]) => k).sort();
-	assert.deepEqual(coverless, ["断了的弦", "轨迹"]);
+	assert.deepEqual(coverless, ["圣诞结", "断了的弦", "轨迹"]);
 });
 
 test("lyric layout carries the day's album cover and credits the album", () => {
 	const layout = calculateLyricLayout({ ...DEFAULT_CONFIG, type: "lyric", width: 1179, height: 2556 }, new Date(2026, 10, 10));
-	assert.equal(layout.excerpt.song, "淘汰");
-	assert.equal(layout.album.album, "认了吧");
+	assert.equal(layout.excerpt.song, "阿刁");
+	assert.equal(layout.album.album, "无法长大");
 	assert.ok(layout.cover.url?.includes("600x600bb"));
 	assert.ok(layout.albumY > layout.creditY);
 });

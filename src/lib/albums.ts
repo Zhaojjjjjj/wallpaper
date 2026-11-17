@@ -137,4 +137,12 @@ export const ALBUM_BY_SONG: Record<string, AlbumInfo> = {
 	"天外来物": { album: "天外来物", year: 2020, cover: "https://is1-ssl.mzstatic.com/image/thumb/Music221/v4/09/8c/a7/098ca759-9752-fe44-ca39-a58ea4fcf4b7/6941636700824.jpg/600x600bb.jpg" },
 	"来自天堂的魔鬼": { album: "新的心跳", year: 2015, cover: "https://is1-ssl.mzstatic.com/image/thumb/Music124/v4/55/bb/c7/55bbc782-299e-7f24-bc4a-ae129e6d8030/mzm.rpqttxch.jpg/600x600bb.jpg" },
 	"我好像在哪见过你": { album: "初学者", year: 2016, cover: "https://is1-ssl.mzstatic.com/image/thumb/Music221/v4/b0/09/04/b009043f-f576-54ce-5b1f-d7896d6933c0/9555150772273.jpg/600x600bb.jpg" },
+	"打回原形": { album: "The Easy Ride", year: 2001, cover: "https://is1-ssl.mzstatic.com/image/thumb/Music124/v4/0b/5e/7e/0b5e7ec5-c8f6-b852-27e0-e6de63bd861c/EEG1044-THE_EASY_RIDE-.jpg/600x600bb.jpg" },
+	"苦瓜": { album: "Stranger Under My Skin", year: 2011, cover: "https://is1-ssl.mzstatic.com/image/thumb/Music115/v4/f3/c8/cb/f3c8cb79-da10-eed6-4c9e-03bb8e5f40fc/00602488996495.rgb.jpg/600x600bb.jpg" },
+	"你给我听好": { album: "米·闪", year: 2014, cover: "https://is1-ssl.mzstatic.com/image/thumb/Music128/v4/b3/03/0f/b3030fa1-1000-4def-27d3-987b0ed2c69a/00602488972895.rgb.jpg/600x600bb.jpg" },
+	"圣诞结": { album: "七", year: 2003, cover: null },
+	"桃花诺": { album: "上古情歌", year: 2017, cover: "https://is1-ssl.mzstatic.com/image/thumb/Music124/v4/e3/02/f6/e302f698-bc3a-8073-8bed-9a0b2e8d956b/8718857320753.jpg/600x600bb.jpg" },
+	"岩石里的花": { album: "另一个童话", year: 2018, cover: "https://is1-ssl.mzstatic.com/image/thumb/Music115/v4/55/0a/ed/550aedc0-c4dd-710d-f500-7fb682646ea0/192562834923.jpg/600x600bb.jpg" },
+	"方圆几里": { album: "意外", year: 2013, cover: "https://is1-ssl.mzstatic.com/image/thumb/Music211/v4/40/2c/54/402c5424-5c68-a0b7-d56f-90b5d810c1f9/9787798504262.jpg/600x600bb.jpg" },
+	"怪咖": { album: "怪咖", year: 2018, cover: "https://is1-ssl.mzstatic.com/image/thumb/Music211/v4/0d/e3/b1/0de3b130-94dc-6df0-2601-14cdb3238d55/9555150726139.jpg/600x600bb.jpg" },
 };
