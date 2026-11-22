@@ -13,6 +13,8 @@ export const runtime = "nodejs";
 // Run this function in Hong Kong: the audience is in mainland China, and the
 // default US-East region made first renders of the day slow (3.5s+ before the
 // first byte, plus a 1.26MB trans-Pacific download, which timed out on phones).
+// The project-level Function Region setting (hkg1, set 2026-11-22) is what
+// actually pins the region; this export stays as a per-route hint.
 export const preferredRegion = "hkg1";
 const toArrayBuffer = (font: Buffer) => font.buffer.slice(font.byteOffset, font.byteOffset + font.byteLength) as ArrayBuffer;
 
