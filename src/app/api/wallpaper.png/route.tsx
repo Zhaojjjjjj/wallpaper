@@ -32,11 +32,16 @@ export async function GET(request: Request) {
 
 	const config = parseWallpaperConfig(searchParams);
 	const instant = new Date();
-	const now = toWallClockDate(instant, config.timeZone);
-	const svg = renderWallpaperSvg(config, now, false);
+	// renderWallpaperSvg and getWallpaperTextLayers convert to the config
+	// timezone internally, so they take the raw instant; calculateLyricLayout
+	// does not convert, so it takes the wall-clock date. Passing the shifted
+	// date to all three double-shifts the text layers (tomorrow's lyrics over
+	// today's cover after 16:00 in the config timezone).
+	const wallNow = toWallClockDate(instant, config.timeZone);
+	const svg = renderWallpaperSvg(config, instant, false);
 	const imageSource = svgToDataUrl(svg);
-	const textLayers = getWallpaperTextLayers(config, now);
-	const lyricLayout = config.type === "lyric" ? calculateLyricLayout(config, now) : null;
+	const textLayers = getWallpaperTextLayers(config, instant);
+	const lyricLayout = config.type === "lyric" ? calculateLyricLayout(config, wallNow) : null;
 	const filename = `lifegrid-${config.type}-${config.width}x${config.height}.png`;
 	const cacheSeconds = getWallpaperCacheSeconds(instant, config.timeZone);
 	const fontData = await notoSansSc;
