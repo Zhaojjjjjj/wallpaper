@@ -10,6 +10,10 @@ import { toWallClockDate } from "@/lib/wallpaper-progress";
 import { getWallpaperCacheSeconds } from "@/lib/wallpaper-time";
 
 export const runtime = "nodejs";
+// Run this function in Hong Kong: the audience is in mainland China, and the
+// default US-East region made first renders of the day slow (3.5s+ before the
+// first byte, plus a 1.26MB trans-Pacific download, which timed out on phones).
+export const preferredRegion = "hkg1";
 const toArrayBuffer = (font: Buffer) => font.buffer.slice(font.byteOffset, font.byteOffset + font.byteLength) as ArrayBuffer;
 
 // Literal paths so the deployment file tracing bundles the font files.
