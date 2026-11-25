@@ -61,7 +61,7 @@ export async function GET(request: Request) {
 		}
 	}
 
-	return new ImageResponse(
+	const imageResponse = new ImageResponse(
 		(
 			<div style={{ display: "flex", position: "relative", width: "100%", height: "100%", background: config.theme.bg }}>
 				{/* ImageResponse requires a renderable image element; next/image is not available in this server renderer. */}
@@ -119,4 +119,27 @@ export async function GET(request: Request) {
 			},
 		}
 	);
+
+	if (config.format !== "jpg") return imageResponse;
+
+	// JPEG output: a photo cover makes the PNG 1.3MB+, and on the slow
+	// cross-border link to China that size is what times out on phones. A
+	// quality-88 4:4:4 JPEG keeps text edges clean at a fraction of the
+	// bytes. Any failure (e.g. sharp unavailable in the runtime) falls back
+	// to the PNG response untouched.
+	try {
+		const sharp = (await import("sharp")).default;
+		const png = Buffer.from(await imageResponse.clone().arrayBuffer());
+		const jpeg = await sharp(png).jpeg({ quality: 88, chromaSubsampling: "4:4:4" }).toBuffer();
+		return new Response(new Uint8Array(jpeg), {
+			headers: {
+				"Cache-Control": `public, max-age=${cacheSeconds}, s-maxage=${cacheSeconds}`,
+				"Content-Disposition": `inline; filename="${filename.replace(/\.png$/, ".jpg")}"`,
+				"Content-Type": "image/jpeg",
+				"X-LifeGrid-Font": "Noto Sans SC",
+			},
+		});
+	} catch {
+		return imageResponse;
+	}
 }

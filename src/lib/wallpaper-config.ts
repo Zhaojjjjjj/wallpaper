@@ -1,10 +1,10 @@
-import { DEFAULT_CONFIG, DEFAULT_LYRIC_FONT, LYRIC_FONTS, LyricFont, WALLPAPER_TYPES, WallpaperConfig, WallpaperType } from "./types";
+import { DEFAULT_CONFIG, DEFAULT_LYRIC_FONT, LYRIC_FONTS, LyricFont, WALLPAPER_TYPES, WallpaperConfig, WallpaperFormat, WallpaperType } from "./types";
 
 const SUPPORTED_TYPES = new Set<string>(WALLPAPER_TYPES);
 const HEX_COLOR = /^#[0-9a-f]{6}$/i;
 export const MAX_CANVAS_PIXELS = 8_388_608;
-const WALLPAPER_QUERY_KEYS = new Set(["type", "width", "height", "bg", "accent", "text", "timeZone", "font"]);
-const COMMON_WALLPAPER_QUERY_KEYS = new Set(["type", "width", "height", "bg", "accent", "text", "timeZone"]);
+const WALLPAPER_QUERY_KEYS = new Set(["type", "width", "height", "bg", "accent", "text", "timeZone", "font", "format"]);
+const COMMON_WALLPAPER_QUERY_KEYS = new Set(["type", "width", "height", "bg", "accent", "text", "timeZone", "format"]);
 const TYPE_SPECIFIC_QUERY_KEYS: Record<WallpaperType, ReadonlySet<string>> = {
 	month: new Set(),
 	calendar: new Set(),
@@ -123,6 +123,8 @@ function isWallpaperQueryValueValid(key: string, value: string): boolean {
 			return normalizeTimeZone(value) !== undefined;
 		case "font":
 			return (LYRIC_FONTS as readonly string[]).includes(value);
+		case "format":
+			return value === "png" || value === "jpg";
 		default:
 			return false;
 	}
@@ -130,6 +132,10 @@ function isWallpaperQueryValueValid(key: string, value: string): boolean {
 
 function normalizeLyricFont(value: string | null): LyricFont {
 	return value && (LYRIC_FONTS as readonly string[]).includes(value) ? (value as LyricFont) : DEFAULT_LYRIC_FONT;
+}
+
+function normalizeFormat(value: string | null): WallpaperFormat | undefined {
+	return value === "jpg" ? "jpg" : undefined;
 }
 
 export function parseWallpaperConfig(searchParams: Pick<URLSearchParams, "get">): WallpaperConfig {
@@ -140,11 +146,13 @@ export function parseWallpaperConfig(searchParams: Pick<URLSearchParams, "get">)
 	);
 
 	const type = normalizeType(searchParams.get("type"));
+	const format = normalizeFormat(searchParams.get("format"));
 	return {
 		type,
 		width: dimensions.width,
 		height: dimensions.height,
 		timeZone: normalizeTimeZone(searchParams.get("timeZone")),
+		...(format ? { format } : {}),
 		...(type === "lyric" ? { font: normalizeLyricFont(searchParams.get("font")) } : {}),
 		theme: {
 			bg: normalizeColor(searchParams.get("bg"), DEFAULT_CONFIG.theme.bg),
@@ -165,6 +173,7 @@ function normalizeWallpaperConfig(config: WallpaperConfig): WallpaperConfig {
 	});
 
 	if (config.timeZone !== undefined) params.set("timeZone", config.timeZone);
+	if (config.format !== undefined) params.set("format", config.format);
 	if (config.type === "lyric" && config.font !== undefined) params.set("font", config.font);
 
 	return parseWallpaperConfig(params);
@@ -182,6 +191,7 @@ function buildWallpaperQueryParams(input: WallpaperConfig): URLSearchParams {
 	});
 
 	if (config.timeZone) params.set("timeZone", config.timeZone);
+	if (config.format) params.set("format", config.format);
 	if (config.type === "lyric") params.set("font", config.font ?? DEFAULT_LYRIC_FONT);
 
 	return params;

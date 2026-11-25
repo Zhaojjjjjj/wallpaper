@@ -8,11 +8,16 @@ export type LyricFont = (typeof LYRIC_FONTS)[number];
 
 export const DEFAULT_LYRIC_FONT: LyricFont = "wenkai";
 
+/** Output encoding of the PNG endpoint; "jpg" is opt-in per link. */
+export type WallpaperFormat = "png" | "jpg";
+
 export interface WallpaperConfig {
 	type: WallpaperType;
 	width: number;
 	height: number;
 	timeZone?: string;
+	/** Output encoding for the image endpoint; absent means PNG. */
+	format?: WallpaperFormat;
 	/** Lyric type only: typeface for the passage and credits. */
 	font?: LyricFont;
 	// Visuals

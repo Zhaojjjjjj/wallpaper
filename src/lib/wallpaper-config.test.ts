@@ -153,6 +153,17 @@ test("invalid time zones are removed at the public URL boundary", () => {
 	assert.equal(parseWallpaperConfig(new URLSearchParams({ timeZone: "Asia/Shanghai" })).timeZone, "Asia/Shanghai");
 });
 
+test("format=jpg is opt-in, canonical when present, and png stays the silent default", () => {
+	assert.equal(parseWallpaperConfig(new URLSearchParams({ format: "jpg" })).format, "jpg");
+	assert.equal(parseWallpaperConfig(new URLSearchParams({ format: "png" })).format, undefined);
+	assert.equal(parseWallpaperConfig(new URLSearchParams({ format: "webp" })).format, undefined);
+	assert.deepEqual(findWallpaperQueryIssues(new URLSearchParams("type=lyric&font=wenkai&format=jpg")), []);
+	assert.deepEqual(findWallpaperQueryIssues(new URLSearchParams("type=lyric&font=wenkai&format=png")), ["noncanonical:format"]);
+	assert.deepEqual(findWallpaperQueryIssues(new URLSearchParams("type=lyric&font=wenkai&format=webp")), ["invalid:format"]);
+	const path = buildWallpaperImagePath({ ...parseWallpaperConfig(new URLSearchParams()), format: "jpg" });
+	assert.match(path, /format=jpg/);
+});
+
 test("PNG requests reject unknown and duplicate cache-busting parameters", () => {
 	assert.deepEqual(findWallpaperQueryIssues(new URLSearchParams("type=month&nonce=1")), ["unknown:nonce"]);
 	assert.deepEqual(findWallpaperQueryIssues(new URLSearchParams("type=month&type=minimal")), ["duplicate:type"]);

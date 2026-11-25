@@ -60,6 +60,19 @@ try {
 		assert.deepEqual(readPngDimensions(image), { width: 320, height: 480 });
 	}
 
+	const jpgQuery = new URLSearchParams({
+		type: "lyric",
+		width: "320",
+		height: "480",
+		timeZone: "Asia/Shanghai",
+		format: "jpg",
+	});
+	const jpgResponse = await fetch(`${baseUrl}/api/wallpaper.png?${jpgQuery}`);
+	if (!jpgResponse.ok) throw new Error(`lyric jpg: ${jpgResponse.status} ${await jpgResponse.text()}`);
+	const jpg = Buffer.from(await jpgResponse.arrayBuffer());
+	assert.equal(jpgResponse.headers.get("content-type"), "image/jpeg");
+	assert.equal(jpg.subarray(0, 3).toString("hex"), "ffd8ff");
+
 	const invalidResponse = await fetch(`${baseUrl}/api/wallpaper.png?type=month&nonce=cache-bypass`);
 	assert.equal(invalidResponse.status, 400);
 	assert.deepEqual(await invalidResponse.json(), {
@@ -74,7 +87,7 @@ try {
 		issues: ["unknown:goalName"],
 	});
 
-	console.log("PNG integration: 5/5 image types and invalid-query handling passed");
+	console.log("PNG integration: 5/5 image types, JPEG output, and invalid-query handling passed");
 } catch (error) {
 	if (error instanceof Error) error.message += `\nProduction server logs:\n${logs}`;
 	throw error;
