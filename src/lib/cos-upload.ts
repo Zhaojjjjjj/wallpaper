@@ -4,8 +4,12 @@ import { createHash, createHmac } from "node:crypto";
 // daily wallpaper object without pulling in a full SDK. Bucket and region
 // are not secrets; the API keys come from the COS_SECRET_ID /
 // COS_SECRET_KEY environment variables.
-const COS_BUCKET = "wallpaper-1322238592";
-const COS_REGION = "ap-guangzhou";
+// Hong Kong bucket: Vercel's hkg1 functions cannot even open a TCP
+// connection to the Guangzhou bucket's IPs (connect timeout — mainland
+// COS endpoints are unreliable from overseas), while the HK endpoint is
+// same-metro for the writer and mainland-optimized for readers.
+const COS_BUCKET = "wallpaper-hk-1322238592";
+const COS_REGION = "ap-hongkong";
 
 const sha1Hex = (text: string) => createHash("sha1").update(text).digest("hex");
 const hmacSha1Hex = (key: string, text: string) => createHmac("sha1", key).update(text).digest("hex");
