@@ -43,16 +43,32 @@ export async function putCosObject(key: string, body: Buffer, contentType: strin
 		`q-sign-algorithm=sha1&q-ak=${secretId}&q-sign-time=${signTime}&q-key-time=${signTime}` +
 		`&q-header-list=${headerKeys.join(";")}&q-url-param-list=&q-signature=${signature}`;
 
-	const response = await fetch(`https://${host}${pathname}`, {
-		method: "PUT",
-		headers: {
-			Authorization: authorization,
-			"Cache-Control": "no-store",
-			"Content-Type": contentType,
-			"x-cos-acl": "public-read",
-		},
-		body: new Uint8Array(body),
-	});
+	// One retry on a network-level failure (the signature window is
+	// minutes wide, so the same Authorization stays valid).
+	let response: Response;
+	try {
+		response = await fetch(`https://${host}${pathname}`, {
+			method: "PUT",
+			headers: {
+				Authorization: authorization,
+				"Cache-Control": "no-store",
+				"Content-Type": contentType,
+				"x-cos-acl": "public-read",
+			},
+			body: new Uint8Array(body),
+		});
+	} catch {
+		response = await fetch(`https://${host}${pathname}`, {
+			method: "PUT",
+			headers: {
+				Authorization: authorization,
+				"Cache-Control": "no-store",
+				"Content-Type": contentType,
+				"x-cos-acl": "public-read",
+			},
+			body: new Uint8Array(body),
+		});
+	}
 	if (!response.ok) {
 		const detail = await response.text().catch(() => "");
 		throw new Error(`COS PUT ${key} failed: HTTP ${response.status} ${detail.slice(0, 300)}`);

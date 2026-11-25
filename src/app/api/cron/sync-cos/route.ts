@@ -56,6 +56,21 @@ export async function GET(request: Request) {
 		return Response.json({ ok: false, error: "invalid key" }, { status: 400 });
 	}
 
+	// Phase-labeled errors with the full cause chain: an undici
+	// "fetch failed" alone does not say which fetch (cover image during
+	// render, or the COS PUT) or why.
+	const describe = (error: unknown): string => {
+		const parts: string[] = [];
+		let current: unknown = error;
+		while (current instanceof Error) {
+			const code = (current as { code?: string }).code;
+			parts.push(code ? `${current.message} [${code}]` : current.message);
+			current = current.cause;
+		}
+		return parts.join(" <- ") || String(error);
+	};
+
+	let phase = "render";
 	try {
 		const { date, instant } = tomorrowInShanghai();
 		const config = parseWallpaperConfig(new URLSearchParams(ZZ_PARAMS));
@@ -68,12 +83,10 @@ export async function GET(request: Request) {
 		if (body.length < 50_000) {
 			throw new Error(`rendered JPEG suspiciously small (${body.length} bytes)`);
 		}
+		phase = "upload";
 		await putCosObject(key, body, "image/jpeg");
 		return Response.json({ ok: true, date, key, bytes: body.length });
 	} catch (error) {
-		return Response.json(
-			{ ok: false, error: error instanceof Error ? error.message : String(error) },
-			{ status: 500 }
-		);
+		return Response.json({ ok: false, phase, error: describe(error) }, { status: 500 });
 	}
 }
